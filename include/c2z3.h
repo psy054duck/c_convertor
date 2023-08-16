@@ -36,11 +36,13 @@
 using namespace llvm;
 typedef std::vector<Use*> use_vector;
 typedef std::vector<Value*> value_vector;
+typedef std::vector<std::pair<Use*, bool>> pc_type;
 typedef enum {
     correct,
     wrong,
     unknown
 } validation_type;
+
 
 std::string get_validation_type_name(validation_type ty);
 void combine_vec(z3::expr_vector& v1, z3::expr_vector& v2);
@@ -59,6 +61,9 @@ class c2z3 {
         z3::expr loop_condition(Loop* loop);
         z3::expr path_condition_header2bb(BasicBlock* bb);
         z3::expr simple_path_condition_from_to(BasicBlock* from, BasicBlock* to);
+
+        pc_type path_condition_from_to(BasicBlock* from, BasicBlock* to);
+        pc_type path_condition_from_to_straight(BasicBlock* from, BasicBlock* to);
 
         void test_loop_condition();
     private:

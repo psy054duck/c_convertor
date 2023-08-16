@@ -225,7 +225,7 @@ z3::expr c2z3::use2z3(Use* u) {
     if (def_loop->contains(user_inst)) {
         if (user_loop) {
             if (user_loop->getHeader() == user_block) {
-                if (auto phi = dyn_cast<PHINode>(user)) {
+                if (auto phi = dyn_cast_or_null<PHINode>(user)) {
                     BasicBlock* from_block = phi->getIncomingBlock(*u);
                     if (user_loop->isLoopLatch(from_block)) {
                         // is a back edge
@@ -389,7 +389,6 @@ z3::expr c2z3::path_condition_header2bb(BasicBlock* bb) {
 }
 
 z3::expr c2z3::simple_path_condition_from_to(BasicBlock* from, BasicBlock* to) {
-    errs() << to << "\n";
     DominatorTree& DT = DTs.at(main);
     assert(DT.dominates(from, to));
     z3::expr res = z3ctx.bool_val(false);
@@ -412,6 +411,37 @@ z3::expr c2z3::simple_path_condition_from_to(BasicBlock* from, BasicBlock* to) {
     }
     return res;
 }
+
+pc_type c2z3::path_condition_from_to(BasicBlock* from, BasicBlock* to) {
+    if (from == to) return {std::make_pair(nullptr, true)};
+    std::vector<std::pair<Use*, bool>> res;
+    LoopInfo& LI = LIs.at(main);
+    Loop* to_loop = LI.getLoopFor(to);
+    for (BasicBlock* prev_bb : predecessors(to)) {
+        Loop* prev_loop = LI.getLoopFor(prev_bb);
+        auto prev_path_condition = path_condition_from_to(from, prev_bb);
+        if (prev_loop == to_loop) {
+
+        }
+    }
+}
+
+pc_type c2z3::path_condition_from_to_straight(BasicBlock* from, BasicBlock* to) {
+    if (from == to) return {std::make_pair(nullptr, true)};
+    for (BasicBlock* prev_bb : predecessors(to)) {
+        pc_type prev_pc = path_condition_from_to_straight(from, prev_bb);
+        std::pair<Use*, bool> local_pc = {nullptr, true};
+        Instruction* term = from->getTerminator();
+        if (auto CI = dyn_cast_or_null<BranchInst>(term)) {
+            if (CI->isConditional()) {
+                Use* cond = &CI->getOperandUse(0);
+                bool is_positive = CI->getSuccessor(0) == to;
+                local_pc = {cond, is_positive};
+            }
+        }
+    }
+}
+
 
 void c2z3::test_loop_condition() {
     for (Loop* loop : LIs.at(main).getLoopsInPreorder()) {
