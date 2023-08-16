@@ -36,7 +36,7 @@
 using namespace llvm;
 typedef std::vector<Use*> use_vector;
 typedef std::vector<Value*> value_vector;
-typedef std::vector<std::pair<Use*, bool>> pc_type;
+typedef std::pair<z3::expr, std::set<Use*>> pc_type;
 typedef enum {
     correct,
     wrong,

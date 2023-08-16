@@ -427,7 +427,7 @@ pc_type c2z3::path_condition_from_to(BasicBlock* from, BasicBlock* to) {
 }
 
 pc_type c2z3::path_condition_from_to_straight(BasicBlock* from, BasicBlock* to) {
-    if (from == to) return {std::make_pair(nullptr, true)};
+    if (from == to) return {z3ctx.bool_val(true), {}};
     for (BasicBlock* prev_bb : predecessors(to)) {
         pc_type prev_pc = path_condition_from_to_straight(from, prev_bb);
         std::pair<Use*, bool> local_pc = {nullptr, true};
