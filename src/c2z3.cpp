@@ -439,6 +439,7 @@ pc_type c2z3::path_condition_from_to_straight(BasicBlock* from, BasicBlock* to) 
                 local_pc = {cond, is_positive};
             }
         }
+
     }
 }
 
