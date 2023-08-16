@@ -58,7 +58,7 @@ class c2z3 {
         z3::expr path_condition(BasicBlock* bb);
         std::pair<Use*, bool> path_condition_b2b(BasicBlock* from, BasicBlock* to);
         std::set<Use*> get_bb_conditions(BasicBlock* bb);
-        z3::expr loop_condition(Loop* loop);
+        pc_type loop_condition(Loop* loop);
         z3::expr path_condition_header2bb(BasicBlock* bb);
         z3::expr simple_path_condition_from_to(BasicBlock* from, BasicBlock* to);
 
