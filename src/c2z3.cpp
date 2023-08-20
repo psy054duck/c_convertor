@@ -167,7 +167,7 @@ z3::expr_vector c2z3::inst2z3(Instruction* inst) {
                     args.pop_back();
                     args.push_back(z3_nidx + 1);
                     // args[dim - 1] = z3_nidx + 1;
-                    res.push_back(z3::implies(z3_nidx > 0, f(args) == z3_op));
+                    res.push_back(z3::implies(z3_nidx >= 0, f(args) == z3_op));
                 } else {
                     throw UnimplementedOperationException(opcode);
                 }
@@ -305,7 +305,7 @@ z3::expr_vector c2z3::all2z3(Instruction* inst) {
     if (loop && !visited_loops.contains(loop)) {
         visited_loops.insert(loop);
         pc_type loop_pc = loop_condition(loop);
-        errs() << loop_pc.first.to_string() << "\n";
+        // errs() << loop_pc.first.to_string() << "\n";
         res.push_back(loop_pc.first);
     }
     return res;
@@ -389,18 +389,32 @@ pc_type c2z3::loop_condition(Loop* loop) {
             cond = &CI->getOperandUse(0);
         }
     }
-    z3::expr res = use2z3(cond);
+    z3::expr piece = use2z3(cond);
     pc_type local_pc = path_condition_from_to(header, latch);
-    res = is_negated ? !res : res;
+    piece = is_negated ? !piece : piece;
+    piece = piece && local_pc.first;
     LoopInfo& LI = LIs.at(main);
     int dim = LI.getLoopDepth(header);
-    z3::expr_vector args(z3ctx);
+    z3::expr_vector ns(z3ctx);
+    z3::expr_vector Ns(z3ctx);
+    z3::expr premises = z3ctx.bool_val(true);
+    z3::expr cons_N = z3ctx.bool_val(true);
     for (int i = 0; i < dim; i++) {
         std::string idx = "n" + std::to_string(i);
-        args.push_back(z3ctx.int_const(idx.data()));
+        ns.push_back(z3ctx.int_const(idx.data()));
+        idx = "N" + std::to_string(i);
+        Ns.push_back(z3ctx.int_const(idx.data()));
+        premises = premises && ns.back() < Ns.back();
+        cons_N = cons_N && Ns.back() >= 0;
     }
-    res = z3::forall()
-    res = res && local_pc.first;
+    errs() << piece.to_string() << "\n";
+    z3::expr loop_cond = z3::forall(ns, z3::implies(premises, piece));
+    errs() << loop_cond.to_string() << "\n";
+    z3::expr exit_cond = !piece.substitute(ns, Ns);
+    errs() << exit_cond.to_string() << "\n";
+    z3::expr res = loop_cond && exit_cond && cons_N;
+    // res = res && loop_cond && exit_cond;
+    // res = res && local_pc.first;
     local_pc.second.insert(cond);
     // return res;
     return {res, local_pc.second};
