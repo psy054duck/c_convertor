@@ -40,14 +40,8 @@ define i32 @main() #0 {
   %17 = load i32, ptr %2, align 4
   %18 = icmp eq i32 %17, 100
   call void @assert(i1 noundef zeroext %18)
-  %19 = load i32, ptr %3, align 4
-  %20 = icmp eq i32 %19, 0
-  call void @assert(i1 noundef zeroext %20)
-  %21 = load i32, ptr %4, align 4
-  %22 = icmp eq i32 %21, -1
-  call void @assert(i1 noundef zeroext %22)
-  %23 = load i32, ptr %1, align 4
-  ret i32 %23
+  %19 = load i32, ptr %1, align 4
+  ret i32 %19
 }
 
 declare void @assert(i1 noundef zeroext) #1

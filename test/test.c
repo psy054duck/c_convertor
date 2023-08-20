@@ -18,19 +18,21 @@ int main()
 	// 	y++;
 	// 	z++;
 	// 	v++;
+	//     assert(y == 0);
 	// } else {
 	// 	y--;
 	// 	z--;
 	// 	v--;
+	//     assert(y == 0);
 	// }
 	for (int i = 0; i < 100; i++) {
-		// for (int j = 0; j < 100; j++) {
-			x++;
-		// }
+	    // for (int j = 0; j < 100; j++) {
+	        x++;
+	    // }
 	}
 	assert(x == 100);
-	assert(y == 0);
-	assert(z == -1);
+	// assert(y == 0);
+	// assert(z == -1);
 	// assert(x + y == 100);
 	// unsigned int x = 0;
 	// unsigned int y = 10;

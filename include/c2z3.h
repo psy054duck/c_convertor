@@ -51,21 +51,27 @@ class c2z3 {
     public:
         c2z3(std::unique_ptr<Module> &mod);
         use_vector getAllAssertions();
-        validation_type check_assert(Use* a);
+        validation_type check_assert(Use* a, int out_idx);
         z3::expr_vector inst2z3(Instruction* inst);
         z3::expr_vector all2z3(Instruction* inst);
         z3::expr use2z3(Use* u);
-        z3::expr path_condition(BasicBlock* bb);
         std::pair<Use*, bool> path_condition_b2b(BasicBlock* from, BasicBlock* to);
         std::set<Use*> get_bb_conditions(BasicBlock* bb);
-        pc_type loop_condition(Loop* loop);
         z3::expr path_condition_header2bb(BasicBlock* bb);
         z3::expr simple_path_condition_from_to(BasicBlock* from, BasicBlock* to);
 
+        pc_type loop_condition(Loop* loop);
+
+        pc_type path_condition(BasicBlock* bb);
         pc_type path_condition_from_to(BasicBlock* from, BasicBlock* to);
         pc_type path_condition_from_to_straight(BasicBlock* from, BasicBlock* to);
+        pc_type pc_and(const pc_type& a, const pc_type& b);
+        pc_type pc_or(const pc_type& a, const pc_type& b);
+
+        bool is_back_edge(BasicBlock* from, BasicBlock* to);
 
         void test_loop_condition();
+
     private:
         std::unique_ptr<Module> m;
         Function* main;
@@ -82,6 +88,7 @@ class c2z3 {
         std::map<BasicBlock*, z3::expr> path_conditions;
         std::map<BasicBlock*, std::set<Use*>> bb_conditions;
         std::set<Instruction*> visited_inst;
+        std::set<Loop*> visited_loops;
 };
 
 #endif

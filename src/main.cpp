@@ -665,15 +665,19 @@ int main(int argc, char** argv) {
 
     c2z3 c_convertor(mod);
     use_vector assertions = c_convertor.getAllAssertions();
-    c_convertor.test_loop_condition();
+    // c_convertor.test_loop_condition();
+    int i = 0;
     for (auto a : assertions) {
         Instruction* inst = dyn_cast<Instruction>(a->getUser());
         BasicBlock* bb = inst->getParent();
         // errs() << bb->getName() << "\n";
+        // pc_type pc = c_convertor.path_condition(bb);
+        // errs() << pc.first.to_string() << "\n";
         // errs() << c_convertor.path_condition(bb).to_string() << "\n";
 
-        // validation_type check_res = c_convertor.check_assert(a);
-        // errs() << get_validation_type_name(check_res) << "\n";
+        validation_type check_res = c_convertor.check_assert(a, i);
+        errs() << get_validation_type_name(check_res) << "\n";
+        i++;
         // errs() << c_convertor.use2z3(a).to_string() << "\n";
     }
 
