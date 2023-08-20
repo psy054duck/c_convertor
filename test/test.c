@@ -25,12 +25,12 @@ int main()
 	// 	v--;
 	//     assert(y == 0);
 	// }
-	for (int i = 0; i < 100; i++) {
+	for (int i = 0; i < -2; i++) {
 	    // for (int j = 0; j < 100; j++) {
 	        x++;
 	    // }
 	}
-	assert(x == 100);
+	assert(x == 0);
 	// assert(y == 0);
 	// assert(z == -1);
 	// assert(x + y == 100);

@@ -21,7 +21,7 @@ define i32 @main() #0 {
 
 7:                                                ; preds = %13, %0
   %8 = load i32, ptr %6, align 4
-  %9 = icmp slt i32 %8, 100
+  %9 = icmp slt i32 %8, -2
   br i1 %9, label %10, label %16
 
 10:                                               ; preds = %7
@@ -38,7 +38,7 @@ define i32 @main() #0 {
 
 16:                                               ; preds = %7
   %17 = load i32, ptr %2, align 4
-  %18 = icmp eq i32 %17, 100
+  %18 = icmp eq i32 %17, 0
   call void @assert(i1 noundef zeroext %18)
   %19 = load i32, ptr %1, align 4
   ret i32 %19

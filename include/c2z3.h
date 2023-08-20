@@ -68,6 +68,9 @@ class c2z3 {
         pc_type pc_and(const pc_type& a, const pc_type& b);
         pc_type pc_or(const pc_type& a, const pc_type& b);
 
+        z3::func_decl get_z3_function(Use* u);
+        z3::expr_vector get_args(int dim);
+
         bool is_back_edge(BasicBlock* from, BasicBlock* to);
 
         void test_loop_condition();

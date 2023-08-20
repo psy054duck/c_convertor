@@ -92,10 +92,12 @@ z3::expr_vector c2z3::inst2z3(Instruction* inst) {
     z3::sort_vector params(z3ctx);
     z3::sort ret_sort = is_bool ? z3ctx.bool_sort() : z3ctx.int_sort();
     z3::expr_vector args(z3ctx);
+    z3::expr_vector loop_args(z3ctx);
     for (int i = 0; i < dim; i++) {
         std::string idx = "n" + std::to_string(i);
         params.push_back(z3ctx.int_sort());
         args.push_back(z3ctx.int_const(idx.data()) + 1);
+        loop_args.push_back(z3ctx.int_const(idx.data()));
     }
     // if (dim > 0) {
     //     std::string idx = "n" + std::to_string(dim - 1);
@@ -173,7 +175,7 @@ z3::expr_vector c2z3::inst2z3(Instruction* inst) {
                 }
             } else {
                 pc_type pc = path_condition(in_bb);
-                z3::expr cond = pc.first;
+                z3::expr cond = pc.first; 
                 // z3::expr cond = path_condition(in_bb);
                 // z3::expr local_cond = path_condition_b2b(in_bb, cur_bb);
                 auto cond_negated = path_condition_b2b(in_bb, cur_bb);
@@ -190,7 +192,17 @@ z3::expr_vector c2z3::inst2z3(Instruction* inst) {
     } else {
         throw UnimplementedOperationException(opcode);
     }
-    return res;
+    // return res;
+    // return z3::forall(params, res);
+    z3::expr_vector forall_res(z3ctx);
+    for (auto e : res) {
+        if (loop_args.size() > 0) {
+            forall_res.push_back(z3::forall(loop_args, e));
+        } else {
+            forall_res.push_back(e);
+        }
+    }
+    return forall_res;
 }
 
 z3::expr c2z3::use2z3(Use* u) {
@@ -377,6 +389,30 @@ validation_type c2z3::check_assert(Use* a, int out_idx) {
     return res;
 }
 
+z3::func_decl c2z3::get_z3_function(Use* u) {
+    Value* v = u->get();
+    auto inst = dyn_cast_or_null<Instruction>(v);
+    assert(inst);
+    LoopInfo& LI = LIs.at(main);
+    int dim = LI.getLoopDepth(inst->getParent());
+    z3::sort_vector args_sorts(z3ctx);
+    z3::sort ret_sort = z3ctx.int_sort();
+    for (int i = 0; i < dim; i++) {
+        args_sorts.push_back(z3ctx.int_sort());
+    }
+    const char* var_name = v->getName().data();
+    return z3ctx.function(var_name, args_sorts, ret_sort);
+}
+
+z3::expr_vector c2z3::get_args(int dim) {
+    z3::expr_vector args(z3ctx);
+    for (int i = 0; i < dim; i++) {
+        std::string n_name = "n" + std::to_string(i);
+        args.push_back(z3ctx.int_const(n_name.data()));
+    }
+    return args;
+}
+
 pc_type c2z3::loop_condition(Loop* loop) {
     BasicBlock* header = loop->getHeader();
     BasicBlock* latch = loop->getLoopLatch();
@@ -390,28 +426,32 @@ pc_type c2z3::loop_condition(Loop* loop) {
         }
     }
     z3::expr piece = use2z3(cond);
+    // z3::func_decl cond_func = get_z3_function(cond);
+    // z3::expr_vector loop_args = get_args(cond_func.arity());
+    // z3::expr piece = cond_func(loop_args);
+
     pc_type local_pc = path_condition_from_to(header, latch);
     piece = is_negated ? !piece : piece;
     piece = piece && local_pc.first;
     LoopInfo& LI = LIs.at(main);
     int dim = LI.getLoopDepth(header);
     z3::expr_vector ns(z3ctx);
+    z3::expr_vector n1s(z3ctx);
     z3::expr_vector Ns(z3ctx);
     z3::expr premises = z3ctx.bool_val(true);
     z3::expr cons_N = z3ctx.bool_val(true);
     for (int i = 0; i < dim; i++) {
         std::string idx = "n" + std::to_string(i);
         ns.push_back(z3ctx.int_const(idx.data()));
+        n1s.push_back(1 + z3ctx.int_const(idx.data()));
         idx = "N" + std::to_string(i);
         Ns.push_back(z3ctx.int_const(idx.data()));
         premises = premises && ns.back() < Ns.back();
         cons_N = cons_N && Ns.back() >= 0;
     }
-    errs() << piece.to_string() << "\n";
+    piece = piece.substitute(n1s, ns);
     z3::expr loop_cond = z3::forall(ns, z3::implies(premises, piece));
-    errs() << loop_cond.to_string() << "\n";
     z3::expr exit_cond = !piece.substitute(ns, Ns);
-    errs() << exit_cond.to_string() << "\n";
     z3::expr res = loop_cond && exit_cond && cons_N;
     // res = res && loop_cond && exit_cond;
     // res = res && local_pc.first;

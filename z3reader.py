@@ -7,6 +7,8 @@ def main():
     # print(solver)
     for e in solver.assertions():
         print(z3.simplify(e))
+    print(solver.check())
+    print(solver.model())
 
 
 if __name__ == '__main__':
