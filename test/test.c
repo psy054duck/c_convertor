@@ -5,7 +5,7 @@ extern void assert(bool);
 
 int main()
 {
-	int x = 0;
+	int x = -1;
 	int y = 0;
 	int z = 0;
 	int v = 0;
@@ -14,23 +14,29 @@ int main()
 	// x = x + 1;
 	// x = x + 1;
 	// x = x + 1;
-	// if (x < 0) {
-	// 	y++;
-	// 	z++;
-	// 	v++;
-	//     assert(y == 0);
-	// } else {
-	// 	y--;
-	// 	z--;
-	// 	v--;
-	//     assert(y == 0);
-	// }
-	for (int i = 0; i < -2; i++) {
-	    // for (int j = 0; j < 100; j++) {
-	        x++;
-	    // }
+	if (x < 0) {
+		y++;
+		z++;
+		v++;
+		x--;
+	} else {
+		y--;
+		z--;
+		v--;
 	}
-	assert(x == 0);
+	for (int i = 0; i < 5; i++) {
+		x++;
+		// if (x >= 0) {
+		//  	x++;
+		// 	y++;
+		// 	z++;
+		// } else {
+		// 	x--;
+		// 	y++;
+		// 	z++;
+		// }
+	}
+	assert(x == 3);
 	// assert(y == 0);
 	// assert(z == -1);
 	// assert(x + y == 100);

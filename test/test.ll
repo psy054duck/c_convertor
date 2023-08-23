@@ -12,36 +12,68 @@ define i32 @main() #0 {
   %5 = alloca i32, align 4
   %6 = alloca i32, align 4
   store i32 0, ptr %1, align 4
-  store i32 0, ptr %2, align 4
+  store i32 -1, ptr %2, align 4
   store i32 0, ptr %3, align 4
   store i32 0, ptr %4, align 4
   store i32 0, ptr %5, align 4
-  store i32 0, ptr %6, align 4
-  br label %7
+  %7 = load i32, ptr %2, align 4
+  %8 = icmp slt i32 %7, 0
+  br i1 %8, label %9, label %18
 
-7:                                                ; preds = %13, %0
-  %8 = load i32, ptr %6, align 4
-  %9 = icmp slt i32 %8, -2
-  br i1 %9, label %10, label %16
-
-10:                                               ; preds = %7
-  %11 = load i32, ptr %2, align 4
-  %12 = add nsw i32 %11, 1
-  store i32 %12, ptr %2, align 4
-  br label %13
-
-13:                                               ; preds = %10
-  %14 = load i32, ptr %6, align 4
+9:                                                ; preds = %0
+  %10 = load i32, ptr %3, align 4
+  %11 = add nsw i32 %10, 1
+  store i32 %11, ptr %3, align 4
+  %12 = load i32, ptr %4, align 4
+  %13 = add nsw i32 %12, 1
+  store i32 %13, ptr %4, align 4
+  %14 = load i32, ptr %5, align 4
   %15 = add nsw i32 %14, 1
-  store i32 %15, ptr %6, align 4
-  br label %7, !llvm.loop !5
+  store i32 %15, ptr %5, align 4
+  %16 = load i32, ptr %2, align 4
+  %17 = add nsw i32 %16, -1
+  store i32 %17, ptr %2, align 4
+  br label %25
 
-16:                                               ; preds = %7
-  %17 = load i32, ptr %2, align 4
-  %18 = icmp eq i32 %17, 0
-  call void @assert(i1 noundef zeroext %18)
-  %19 = load i32, ptr %1, align 4
-  ret i32 %19
+18:                                               ; preds = %0
+  %19 = load i32, ptr %3, align 4
+  %20 = add nsw i32 %19, -1
+  store i32 %20, ptr %3, align 4
+  %21 = load i32, ptr %4, align 4
+  %22 = add nsw i32 %21, -1
+  store i32 %22, ptr %4, align 4
+  %23 = load i32, ptr %5, align 4
+  %24 = add nsw i32 %23, -1
+  store i32 %24, ptr %5, align 4
+  br label %25
+
+25:                                               ; preds = %18, %9
+  store i32 0, ptr %6, align 4
+  br label %26
+
+26:                                               ; preds = %32, %25
+  %27 = load i32, ptr %6, align 4
+  %28 = icmp slt i32 %27, 5
+  br i1 %28, label %29, label %35
+
+29:                                               ; preds = %26
+  %30 = load i32, ptr %2, align 4
+  %31 = add nsw i32 %30, 1
+  store i32 %31, ptr %2, align 4
+  br label %32
+
+32:                                               ; preds = %29
+  %33 = load i32, ptr %6, align 4
+  %34 = add nsw i32 %33, 1
+  store i32 %34, ptr %6, align 4
+  br label %26, !llvm.loop !5
+
+35:                                               ; preds = %26
+  %36 = load i32, ptr %2, align 4
+  %37 = icmp eq i32 %36, 3
+  call void @assert(i1 noundef zeroext %37)
+  %38 = load i32, ptr %1, align 4
+  ret i32 %38
 }
 
 declare void @assert(i1 noundef zeroext) #1
