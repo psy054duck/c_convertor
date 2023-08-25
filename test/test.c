@@ -5,26 +5,27 @@ extern void assert(bool);
 
 int main()
 {
-	int x = -1;
+	int x = 0;
 	int y = 0;
 	int z = 0;
 	int v = 0;
+	int N = unknown1();
 	// x = x + 1;
 	// x = x + 1;
 	// x = x + 1;
 	// x = x + 1;
 	// x = x + 1;
-	if (x < 0) {
-		y++;
-		z++;
-		v++;
-		x--;
-	} else {
-		y--;
-		z--;
-		v--;
-	}
-	for (int i = 0; i < 5; i++) {
+	// if (x < 0) {
+	// 	y++;
+	// 	z++;
+	// 	v++;
+	// 	x--;
+	// } else {
+	// 	y--;
+	// 	z--;
+	// 	v--;
+	// }
+	for (int i = 0; i < N; i++) {
 		x++;
 		// if (x >= 0) {
 		//  	x++;
@@ -36,7 +37,8 @@ int main()
 		// 	z++;
 		// }
 	}
-	assert(x == 3);
+	if (N > 0)
+		assert(x == N);
 	// assert(y == 0);
 	// assert(z == -1);
 	// assert(x + y == 100);

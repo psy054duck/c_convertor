@@ -80,12 +80,44 @@ use_vector c2z3::getAllAssertions() {
     return res;
 }
 
-rec_ty c2z3::get_rec(Instruction* inst) {
-    rec_ty rec;
+std::set<Value*> c2z3::get_header_defs(Value* v) {
+    // get phi nodes in header that v depends directly/indirectly on
+    std::set<Value*> res;
+    auto inst = dyn_cast_or_null<Instruction>(v);
     LoopInfo& LI = LIs.at(main);
     Loop* loop = LI.getLoopFor(inst->getParent());
-    if (!loop) return rec;
-    return rec;
+    BasicBlock* header = loop->getHeader();
+    if (auto phi = dyn_cast_or_null<PHINode>(v)) {
+        if (phi->getParent() == header) {
+            return {v};
+        }
+    }
+    for (int i = 0; i < inst->getNumOperands(); i++) {
+        Value* operand = inst->getOperand(i);
+        // auto operand_inst = dyn_cast_or_null<Instruction>(operand);
+        if (loop->contains(operand))
+            res.merge(get_header_defs(operand));
+    }
+    return res;
+}
+
+z3::expr c2z3::express_v_as_header_phis(Value* v) {
+    auto inst = dyn_cast_or_null<Instruction>(v);
+    for (int i = 0; i < inst->getNumOperands(); i++) {
+
+    }
+}
+
+z3::expr c2z3::_express_v_as_header_phis(Value* v, Loop* inner_loop) {
+    if (auto CI = dyn_cast_or_null<ConstantInt>(v)) {
+        int svalue = CI->getSExtValue();
+        return z3ctx.int_val(svalue);
+    }
+    auto inst = dyn_cast_or_null<Instruction>(v);
+    LoopInfo& LI = LIs.at(main);
+    BasicBlock* bb = inst->getParent();
+    Loop* loop = LI.getLoopFor(bb);
+    
 }
 
 z3::expr_vector c2z3::inst2z3(Instruction* inst) {
@@ -154,6 +186,8 @@ z3::expr_vector c2z3::inst2z3(Instruction* inst) {
         z3::expr first = use2z3(&CI->getOperandUse(1));
         z3::expr second = use2z3(&CI->getOperandUse(2));
         res.push_back(f(args) == z3::ite(cond, first, second));
+    } else if (auto CI = dyn_cast_or_null<CallInst>(inst)) {
+        // all calls are treated as unknown values;
     } else if (auto CI = dyn_cast<PHINode>(inst)) {
         for (int i = 0; i < CI->getNumIncomingValues(); i++) {
             BasicBlock* cur_bb = inst->getParent();
@@ -177,7 +211,8 @@ z3::expr_vector c2z3::inst2z3(Instruction* inst) {
                     args.pop_back();
                     args.push_back(z3_nidx + 1);
                     // args[dim - 1] = z3_nidx + 1;
-                    res.push_back(z3::implies(z3_nidx >= 0, f(args) == z3_op));
+                    // res.push_back(z3::implies(z3_nidx >= 0, f(args) == z3_op));
+                    res.push_back(f(args) == z3_op);
                 } else {
                     throw UnimplementedOperationException(opcode);
                 }
@@ -390,6 +425,8 @@ validation_type c2z3::check_assert(Use* a, int out_idx) {
     Value* v = a->get();
     if (auto inst = dyn_cast<Instruction>(v)) {
         s.add(all2z3(inst));
+        pc_type assert_pc = path_condition(inst->getParent());
+        s.add(assert_pc.first);
     }
     std::string filename = "tmp/tmp" + std::to_string(out_idx) + ".smt2";
     std::ofstream out(filename);

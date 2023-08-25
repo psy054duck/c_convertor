@@ -68,11 +68,13 @@ class c2z3 {
         pc_type pc_and(const pc_type& a, const pc_type& b);
         pc_type pc_or(const pc_type& a, const pc_type& b);
 
-        rec_ty get_rec(Instruction* inst);
+        z3::expr express_v_as_header_phis(Value* v);
+        z3::expr _express_v_as_header_phis(Value* v, Loop* inner_loop);
 
         z3::func_decl get_z3_function(Use* u);
         z3::expr_vector get_args(int dim, bool c, bool plus, bool prefix);
-        // z3::expr use2z3_n2N(Use* u);
+
+        std::set<Value*> get_header_defs(Value* v);
 
         bool is_back_edge(BasicBlock* from, BasicBlock* to);
 

@@ -34,5 +34,5 @@ llvm_map_components_to_libnames(llvm_libs core irreader analysis passes)
 message(STATUS "${llvm_libs}")
 
 # Link against LLVM libraries
-target_link_libraries(main ${Z3_LIBRARIES} ${llvm_libs} c2z3 rec_solver)
+target_link_libraries(main c2z3 rec_solver ${Z3_LIBRARIES} ${llvm_libs} )
 # add_subdirectory(IfConversion)
