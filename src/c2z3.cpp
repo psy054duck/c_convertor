@@ -117,7 +117,6 @@ z3::expr c2z3::_express_v_as_header_phis(Value* v, Loop* inner_loop) {
     LoopInfo& LI = LIs.at(main);
     BasicBlock* bb = inst->getParent();
     Loop* loop = LI.getLoopFor(bb);
-    
 }
 
 z3::expr_vector c2z3::inst2z3(Instruction* inst) {
