@@ -105,7 +105,8 @@ void rec_solver::simple_solve() {
             z3::expr const_term = (eq - linear_part).simplify();
             if (all_app.size() == 1 && coeff_of(eq, all_app[0], z3ctx) == 1) {
                 auto func_decl = func.decl();
-                res.insert_or_assign(func_decl(ind_var), func_decl(0) + ind_var*const_term);
+                z3::expr closed = func_decl(0) + ind_var*const_term;
+                res.insert_or_assign(func_decl(ind_var), closed.simplify());
             }
         }
     }
@@ -126,4 +127,8 @@ void rec_solver::expr_solve(z3::expr e) {
 
 std::map<z3::expr, z3::expr> rec_solver::get_res() const {
     return res;
+}
+
+void rec_solver::add_initial_values(initial_ty initial) {
+
 }

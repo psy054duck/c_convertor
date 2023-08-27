@@ -55,6 +55,7 @@ class c2z3 {
         z3::expr_vector inst2z3(Instruction* inst);
         z3::expr_vector all2z3(Instruction* inst);
         z3::expr use2z3(Use* u);
+        z3::expr v2z3(Value* v, int dim, int plus);
         std::pair<Use*, bool> path_condition_b2b(BasicBlock* from, BasicBlock* to);
         std::set<Use*> get_bb_conditions(BasicBlock* bb);
         z3::expr path_condition_header2bb(BasicBlock* bb);
@@ -71,10 +72,14 @@ class c2z3 {
         z3::expr express_v_as_header_phis(Value* v);
         z3::expr _express_v_as_header_phis(Value* v, Loop* inner_loop);
 
+        z3::func_decl get_z3_function(Value* v, int dim);
         z3::func_decl get_z3_function(Use* u);
         z3::expr_vector get_args(int dim, bool c, bool plus, bool prefix);
 
-        std::set<Value*> get_header_defs(Value* v);
+        std::set<PHINode*> get_header_defs(Value* v);
+
+        rec_ty header_phi_as_rec(PHINode* phi);
+        initial_ty header_phi_as_initial(PHINode* phi);
 
         bool is_back_edge(BasicBlock* from, BasicBlock* to);
 
@@ -97,6 +102,7 @@ class c2z3 {
         std::map<BasicBlock*, std::set<Use*>> bb_conditions;
         std::set<Instruction*> visited_inst;
         std::set<Loop*> visited_loops;
+        rec_solver rec_s;
 };
 
 #endif

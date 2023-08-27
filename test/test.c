@@ -26,7 +26,8 @@ int main()
 	// 	v--;
 	// }
 	for (int i = 0; i < N; i++) {
-		x++;
+		// if (x >= 0)
+			x--;
 		// if (x >= 0) {
 		//  	x++;
 		// 	y++;
@@ -38,7 +39,7 @@ int main()
 		// }
 	}
 	if (N > 0)
-		assert(x == N);
+		assert(x == -N);
 	// assert(y == 0);
 	// assert(z == -1);
 	// assert(x + y == 100);
