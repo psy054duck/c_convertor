@@ -515,8 +515,18 @@ bool c2z3::is_terminal(Value* v) {
     return bb == &main->getEntryBlock() && isa<CallInst>(v);
 }
 
-void c2z3::assertion_as_loop_expression(Use* u) {
-    Value* assertion = u->get();
+void c2z3::as_loop_expression(Use* u, z3::expr acc) {
+    Value* v = u->get();
+    auto inst = dyn_cast_or_null<Instruction>(v);
+    assert(inst);
+    int opcode = inst->getOpcode();
+    if (inst->isBinaryOp()) {
+        Use* op0 = &inst->getOperandUse(0);
+        Use* op1 = &inst->getOperandUse(1);
+        if (opcode == Instruction::And) {
+
+        }
+    }
 }
 
 z3::expr_vector c2z3::all2z3(Instruction* inst) {
