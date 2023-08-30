@@ -24,7 +24,7 @@ void combine_vec(z3::expr_vector& v1, z3::expr_vector& v2) {
     }
 }
 
-c2z3::c2z3(std::unique_ptr<Module> &mod): m(std::move(mod)), rec_s(z3ctx) {
+c2z3::c2z3(std::unique_ptr<Module> &mod): m(std::move(mod)), rec_s(z3ctx), expression2solve(z3ctx) {
     // Register all the basic analyses with the managers.
     PB.registerModuleAnalyses(MAM);
     PB.registerCGSCCAnalyses(CGAM);
@@ -247,30 +247,30 @@ z3::expr_vector c2z3::inst2z3(Instruction* inst) {
     z3::func_decl f = get_z3_function(inst, dim);
     z3::expr_vector args = get_args(dim, false, true, false);
     bool solved = false;
-    if (loop) {
-        std::set<PHINode*> phis = get_header_defs(inst);
-        z3::expr combination = express_v_as_header_phis(inst);
-        z3::expr_vector subs_k(z3ctx);
-        z3::expr_vector subs_v(z3ctx);
-        for (auto p : phis) {
-            rec_ty rec = header_phi_as_rec(p);
-            initial_ty initial = header_phi_as_initial(p);
-            rec_s.set_ind_var(z3ctx.int_const("n0"));
-            rec_s.set_eqs(rec);
-            rec_s.add_initial_values(initial.first, initial.second);
-            rec_s.simple_solve();
-            rec_s.apply_initial_values();
-            closed_form_ty sol = rec_s.get_res();
-            if (!sol.empty()) solved = true;
-            for (auto r : sol) {
-                subs_k.push_back(r.first);
-                subs_v.push_back(r.second);
-            }
-        }
-        args = get_args(dim, false, false, false);
-        res.push_back(f(args) == combination.substitute(subs_k, subs_v));
-        args = get_args(dim, false, true, false);
-    }
+    // if (loop) {
+    //     std::set<PHINode*> phis = get_header_defs(inst);
+    //     z3::expr combination = express_v_as_header_phis(inst);
+    //     z3::expr_vector subs_k(z3ctx);
+    //     z3::expr_vector subs_v(z3ctx);
+    //     for (auto p : phis) {
+    //         rec_ty rec = header_phi_as_rec(p);
+    //         initial_ty initial = header_phi_as_initial(p);
+    //         rec_s.set_ind_var(z3ctx.int_const("n0"));
+    //         rec_s.set_eqs(rec);
+    //         rec_s.add_initial_values(initial.first, initial.second);
+    //         rec_s.simple_solve();
+    //         rec_s.apply_initial_values();
+    //         closed_form_ty sol = rec_s.get_res();
+    //         if (!sol.empty()) solved = true;
+    //         for (auto r : sol) {
+    //             subs_k.push_back(r.first);
+    //             subs_v.push_back(r.second);
+    //         }
+    //     }
+    //     args = get_args(dim, false, false, false);
+    //     res.push_back(f(args) == combination.substitute(subs_k, subs_v));
+    //     args = get_args(dim, false, true, false);
+    // }
     int opcode = inst->getOpcode();
     if (solved) {
         // pass
@@ -501,6 +501,24 @@ std::set<Use*> c2z3::get_bb_conditions(BasicBlock* bb) {
     return res;
 }
 
+bool c2z3::is_terminal(Value* v) {
+    if (isa<Constant>(v)) return true;
+    auto inst = dyn_cast_or_null<Instruction>(v);
+    assert(inst);
+    BasicBlock* bb = inst->getParent();
+    LoopInfo& LI = LIs.at(main);
+    Loop* loop = LI.getLoopFor(bb);
+    if (loop) {
+        BasicBlock* header = loop->getHeader();
+        return header == bb && isa<PHINode>(v);
+    }
+    return bb == &main->getEntryBlock() && isa<CallInst>(v);
+}
+
+void c2z3::assertion_as_loop_expression(Use* u) {
+    Value* assertion = u->get();
+}
+
 z3::expr_vector c2z3::all2z3(Instruction* inst) {
     if (visited_inst.contains(inst)) {
         return z3::expr_vector(z3ctx);
@@ -526,12 +544,12 @@ z3::expr_vector c2z3::all2z3(Instruction* inst) {
             }
         }
     }
-    if (loop && !visited_loops.contains(loop)) {
-        visited_loops.insert(loop);
-        pc_type loop_pc = loop_condition(loop);
-        // errs() << loop_pc.first.to_string() << "\n";
-        res.push_back(loop_pc.first);
-    }
+    // if (loop && !visited_loops.contains(loop)) {
+    //     visited_loops.insert(loop);
+    //     pc_type loop_pc = loop_condition(loop);
+    //     // errs() << loop_pc.first.to_string() << "\n";
+    //     res.push_back(loop_pc.first);
+    // }
     return res;
 }
 

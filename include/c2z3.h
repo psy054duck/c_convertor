@@ -80,6 +80,9 @@ class c2z3 {
         z3::expr_vector get_pure_args(int dim, bool c);
         z3::expr get_non_neg_args_cond(int dim);
 
+        void assertion_as_loop_expression(Use* u);
+        bool is_terminal(Value* v);
+
         std::set<PHINode*> get_header_defs(Value* v);
 
         bool is_bool(Value* v);
@@ -109,6 +112,7 @@ class c2z3 {
         std::set<Instruction*> visited_inst;
         std::set<Loop*> visited_loops;
         rec_solver rec_s;
+        z3::expr_vector expression2solve;
 };
 
 #endif
