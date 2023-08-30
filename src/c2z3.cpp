@@ -124,7 +124,9 @@ initial_ty c2z3::header_phi_as_initial(PHINode* phi) {
     BasicBlock* initial_bb = phi->getIncomingBlock(0);
     if (initial_bb == loop->getLoopLatch()) initial_bb = phi->getIncomingBlock(1);
     int dim_initial = LI.getLoopDepth(initial_bb);
-    z3::expr initial_v = v2z3(phi->getIncomingValueForBlock(initial_bb), dim_initial, false);
+    int operand_idx = phi->getBasicBlockIndex(initial_bb);
+    // z3::expr initial_v = v2z3(phi->getIncomingValueForBlock(initial_bb), dim_initial, false);
+    z3::expr initial_v = use2z3(&phi->getOperandUse(operand_idx));
     // res.insert_or_assign(f(args), initial_v);
     z3::expr_vector fs(z3ctx);
     z3::expr_vector vs(z3ctx);
@@ -207,7 +209,7 @@ z3::expr c2z3::_express_v_as_header_phis(Value* v, Loop* inner_loop) {
         return z3::ite(cond, first, second);
     } else if (auto CI = dyn_cast_or_null<CallInst>(inst)) {
         // all calls are treated as unknown values;
-
+        return z3ctx.int_const("unknwon");
     } else {
         throw UnimplementedOperationException(opcode);
     }
@@ -287,6 +289,10 @@ z3::expr_vector c2z3::inst2z3(Instruction* inst) {
             res.push_back(f(args) == z3op0 / z3op1);
         } else if (opcode == Instruction::SRem || opcode == Instruction::URem) {
             res.push_back(f(args) == z3op0 % z3op1);
+        } else if (opcode == Instruction::And) {
+            res.push_back(f(args) == z3op0 && z3op1);
+        } else if (opcode == Instruction::Or) {
+            res.push_back(f(args) == z3op0 || z3op1);
         } else {
             throw UnimplementedOperationException(opcode);
         }
@@ -342,7 +348,6 @@ z3::expr_vector c2z3::inst2z3(Instruction* inst) {
                     args.pop_back();
                     args.push_back(z3ctx.int_val(0));
                     initial_res.push_back(f(args) == z3_op);
-                errs() << z3_op.to_string() << "\n";
                 } else if (loop->getLoopLatch() == in_bb) {
                     // inductive
                     args.pop_back();
@@ -549,11 +554,36 @@ std::pair<Use*, bool> c2z3::path_condition_b2b(BasicBlock* from, BasicBlock* to)
     return std::make_pair(cond, is_negated);
 }
 
+z3::expr c2z3::get_non_neg_args_cond(int dim) {
+    z3::expr_vector args = get_pure_args(dim, false);
+    z3::expr res = z3ctx.bool_val(true);
+    for (int i = 0; i < args.size(); i++) {
+        res = res && args[i] >= 0;
+    }
+    return res;
+}
+
 validation_type c2z3::check_assert(Use* a, int out_idx) {
     visited_loops.clear();
     visited_inst.clear();
     z3::solver s(z3ctx);
-    s.add(!use2z3(a));
+
+    User* user = a->getUser();
+    int dim = 0;
+    if (!isa<Constant>(user)) {
+        auto CI = dyn_cast_or_null<Instruction>(user);
+        LoopInfo& LI = LIs.at(main);
+        dim = LI.getLoopDepth(CI->getParent());
+    }
+    z3::expr_vector args = get_pure_args(dim, false);
+    z3::expr non_neg_args_cond = get_non_neg_args_cond(dim);
+
+    if (args.size() > 0) {
+        s.add(!z3::forall(args, z3::implies(non_neg_args_cond, use2z3(a))));
+    } else {
+        s.add(!use2z3(a));
+    }
+
     Value* v = a->get();
     if (auto inst = dyn_cast_or_null<Instruction>(v)) {
         s.add(all2z3(inst));

@@ -63,6 +63,8 @@ class c2z3 {
 
         pc_type loop_condition(Loop* loop);
 
+        int get_dim(Use* u);
+
         pc_type path_condition(BasicBlock* bb);
         pc_type path_condition_from_to(BasicBlock* from, BasicBlock* to);
         pc_type path_condition_from_to_straight(BasicBlock* from, BasicBlock* to);
@@ -76,6 +78,7 @@ class c2z3 {
         z3::func_decl get_z3_function(Use* u);
         z3::expr_vector get_args(int dim, bool c, bool plus, bool prefix);
         z3::expr_vector get_pure_args(int dim, bool c);
+        z3::expr get_non_neg_args_cond(int dim);
 
         std::set<PHINode*> get_header_defs(Value* v);
 
