@@ -75,8 +75,11 @@ class c2z3 {
         z3::func_decl get_z3_function(Value* v, int dim);
         z3::func_decl get_z3_function(Use* u);
         z3::expr_vector get_args(int dim, bool c, bool plus, bool prefix);
+        z3::expr_vector get_pure_args(int dim, bool c);
 
         std::set<PHINode*> get_header_defs(Value* v);
+
+        bool is_bool(Value* v);
 
         rec_ty header_phi_as_rec(PHINode* phi);
         initial_ty header_phi_as_initial(PHINode* phi);

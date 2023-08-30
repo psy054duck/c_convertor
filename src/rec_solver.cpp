@@ -82,7 +82,7 @@ bool is_one_stride_simple_rec(z3::expr lhs, z3::expr rhs) {
     z3::expr lhs_arg = lhs.arg(0);
 }
 
-rec_solver::rec_solver(std::map<z3::expr, z3::expr>& eqs, z3::expr var, z3::context& z3ctx): z3ctx(z3ctx), ind_var(z3ctx) {
+rec_solver::rec_solver(std::map<z3::expr, z3::expr>& eqs, z3::expr var, z3::context& z3ctx): z3ctx(z3ctx), ind_var(z3ctx), initial_values_k(z3ctx), initial_values_v(z3ctx) {
     set_eqs(eqs);
     set_ind_var(var);
 }
@@ -92,6 +92,7 @@ void rec_solver::set_eqs(std::map<z3::expr, z3::expr>& eqs) {
 }
 
 void rec_solver::simple_solve() {
+    res.clear();
     for (auto& func_eq : rec_eqs) {
         z3::expr func = func_eq.first;
         z3::expr eq = func_eq.second;
@@ -110,6 +111,7 @@ void rec_solver::simple_solve() {
             }
         }
     }
+    // apply_initial_values();
 }
 
 void rec_solver::expr_solve(z3::expr e) {
@@ -129,6 +131,26 @@ std::map<z3::expr, z3::expr> rec_solver::get_res() const {
     return res;
 }
 
-void rec_solver::add_initial_values(initial_ty initial) {
+void rec_solver::add_initial_values(z3::expr_vector k, z3::expr_vector v) {
+    int size = k.size();
+    for (int i = 0; i < size; i++) {
+        bool found = false;
+        for (int j = 0; j < initial_values_k.size(); j++) {
+            z3::expr diff = (initial_values_k[j] - k[i]).simplify();
+            if (diff.is_numeral() && diff.get_numeral_int64() == 0) {
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
+            initial_values_k.push_back(k[i]);
+            initial_values_v.push_back(v[i]);
+        }
+    }
+}
 
+void rec_solver::apply_initial_values() {
+    for (auto& r : res) {
+        r.second = r.second.substitute(initial_values_k, initial_values_v);
+    }
 }
