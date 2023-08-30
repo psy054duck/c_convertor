@@ -10,17 +10,27 @@
 // }
 #include <stdbool.h>
 extern unsigned int __VERIFIER_nondet_uint();
+extern int __VERIFIER_nondet_int();
 extern void assert(bool);
+#define __VERIFIER_assert(x) assert(x)
 
 int main()
 {
   unsigned int n = __VERIFIER_nondet_uint();
-  unsigned int x=n, y=0;
+  unsigned int x=n, y=0, z;
   while(x>0)
   {
     x--;
     y++;
   }
-  assert(y==n);
-}
 
+  z = y;
+  while(z>0)
+  {
+    x++;
+    z--;
+  }
+
+  __VERIFIER_assert(x==n);
+  return 0;
+}

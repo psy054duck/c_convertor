@@ -143,7 +143,7 @@ z3::expr c2z3::express_v_as_header_phis(Value* v) {
 z3::expr c2z3::_express_v_as_header_phis(Value* v, Loop* inner_loop) {
     if (auto CI = dyn_cast_or_null<ConstantInt>(v)) {
         int svalue = CI->getSExtValue();
-        return z3ctx.int_val(svalue);
+        return is_bool(v) ? z3ctx.bool_val(svalue) : z3ctx.int_val(svalue);
     }
     auto inst = dyn_cast_or_null<Instruction>(v);
     LoopInfo& LI = LIs.at(main);
@@ -342,6 +342,7 @@ z3::expr_vector c2z3::inst2z3(Instruction* inst) {
                     args.pop_back();
                     args.push_back(z3ctx.int_val(0));
                     initial_res.push_back(f(args) == z3_op);
+                errs() << z3_op.to_string() << "\n";
                 } else if (loop->getLoopLatch() == in_bb) {
                     // inductive
                     args.pop_back();
@@ -425,15 +426,18 @@ z3::expr c2z3::use2z3(Use* u) {
     LoopInfo& LI = LIs.at(main);
     auto CI = dyn_cast<Instruction>(use_def);
     int dim = LI.getLoopDepth(CI->getParent());
-    z3::sort_vector params(z3ctx);
-    z3::expr_vector args(z3ctx);
-    z3::sort ret_sort = is_bool ? z3ctx.bool_sort() : z3ctx.int_sort();
+    // z3::sort_vector params(z3ctx);
+    // z3::expr_vector args(z3ctx);
+    // z3::sort ret_sort = is_bool ? z3ctx.bool_sort() : z3ctx.int_sort();
 
-    for (int i = 0; i < dim; i++) {
-        std::string idx = "n" + std::to_string(i);
-        params.push_back(z3ctx.int_sort());
-        args.push_back(z3ctx.int_const(idx.data()) + 1);
-    }
+    // for (int i = 0; i < dim; i++) {
+    //     std::string idx = "n" + std::to_string(i);
+    //     params.push_back(z3ctx.int_sort());
+    //     args.push_back(z3ctx.int_const(idx.data()) + 1);
+    // }
+    z3::func_decl f = get_z3_function(u);
+    z3::expr_vector args = get_args(dim, false, true, false);
+
     Value* user = u->getUser();
     auto user_inst = dyn_cast<Instruction>(user);
     BasicBlock* user_block = user_inst->getParent();
@@ -470,7 +474,7 @@ z3::expr c2z3::use2z3(Use* u) {
         std::string idx = "N" + std::to_string(dim - 1);
         args.push_back(z3ctx.int_const(idx.data()));
     }
-    z3::func_decl f = z3ctx.function(var_name, params, ret_sort);
+    // z3::func_decl f = z3ctx.function(var_name, params, ret_sort);
     return f(args);
 }
 
@@ -530,31 +534,6 @@ pc_type c2z3::path_condition(BasicBlock* bb) {
     BasicBlock* entry = &main->getEntryBlock();
     return path_condition_from_to(entry, bb);
 }
-// z3::expr c2z3::path_condition(BasicBlock* bb) {
-//     if (path_conditions.find(bb) != path_conditions.end()) {
-//         return path_conditions.at(bb);
-//     }
-//     z3::expr res = z3ctx.bool_val(false);
-//     BasicBlock* entry = &main->getEntryBlock();
-//     if (bb == entry) {
-//         return z3ctx.bool_val(true);
-//     }
-//     LoopInfo& LI = LIs.at(main);
-//     Loop* loop = LI.getLoopFor(bb);
-//     for (BasicBlock* prev_bb : predecessors(bb)) {
-//         if (loop && bb == loop->getHeader() && loop->getLoopLatch() == prev_bb) continue;
-//         Instruction* term = prev_bb->getTerminator();
-//         z3::expr cur_cond_z3 = path_condition(prev_bb);
-//         // z3::expr local_path_cond = path_condition_b2b(prev_bb, bb);
-//         auto local_cond_negated = path_condition_b2b(prev_bb, bb);
-//         z3::expr local_path_cond = use2z3(local_cond_negated.first);
-//         local_path_cond = local_cond_negated.second ? !local_path_cond : local_path_cond;
-//         res = res || (cur_cond_z3 && local_path_cond);
-//     }
-//     res = res.simplify();
-//     path_conditions.insert_or_assign(bb, res);
-//     return res;
-// }
 
 std::pair<Use*, bool> c2z3::path_condition_b2b(BasicBlock* from, BasicBlock* to) {
     Instruction* term = from->getTerminator();
@@ -811,24 +790,3 @@ pc_type c2z3::path_condition_from_to_straight(BasicBlock* from, BasicBlock* to) 
     res.first = res.first.simplify();
     return res;
 }
-
-// z3::expr c2z3::use2z3_n2N(Use* u) {
-//     Value* v = u->get();
-//     auto I = dyn_cast_or_null<Instruction>(v);
-//     z3::expr res = use2z3(u);
-//     LoopInfo& LI = LIs.at(main);
-//     int dim = LI.getLoopDepth(I->getParent());
-//     z3::expr_vector n1_args = get_args(dim, false, true, false);
-//     z3::expr_vector N_args = get_args(dim, true, false, false);
-//     res = res.substitute(n1_args, N_args);
-//     n1_args = get_args(dim, false, true, true);
-//     res = res.substitute(n1_args, N_args);
-// 
-//     return res;
-// }
-
-// void c2z3::test_loop_condition() {
-//     for (Loop* loop : LIs.at(main).getLoopsInPreorder()) {
-//         errs() << loop_condition(loop).simplify().to_string() << "\n";
-//     }
-// }
