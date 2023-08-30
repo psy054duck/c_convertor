@@ -321,7 +321,7 @@ z3::expr_vector c2z3::inst2z3(Instruction* inst) {
         // all calls are treated as unknown values;
         Function* called = CI->getCalledFunction();
         auto called_name = called->getName();
-        if (called_name.ends_with("uint")) {
+        if (called_name.endswith("uint")) {
             res.push_back(f(args) >= 0);
         }
     } else if (auto CI = dyn_cast<PHINode>(inst)) {
