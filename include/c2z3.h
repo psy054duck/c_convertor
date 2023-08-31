@@ -81,6 +81,8 @@ class c2z3 {
         z3::expr get_non_neg_args_cond(int dim);
 
         z3::expr loop_expression(Use* u);
+
+        void as_loop_expression(Use* u);
         z3::expr _as_loop_expression(Use* u, z3::expr acc);
         bool is_terminal(Value* v);
 
@@ -90,6 +92,9 @@ class c2z3 {
 
         rec_ty header_phi_as_rec(PHINode* phi);
         initial_ty header_phi_as_initial(PHINode* phi);
+        rec_ty loop2rec(Loop* loop);
+        initial_ty loop2initial(Loop* loop);
+        z3::expr loop_bound(Loop* loop);
 
         bool is_back_edge(BasicBlock* from, BasicBlock* to);
 

@@ -67,9 +67,9 @@ use_vector c2z3::getAllAssertions() {
     use_vector res;
     for (auto& bb : *main) {
         for (auto& ins : bb) {
-            if (auto call = dyn_cast<CallInst>(&ins)) {
+            if (auto call = dyn_cast_or_null<CallInst>(&ins)) {
                 Function* f = call->getCalledFunction();
-                if (f->getName().endswith("assert")) {
+                if (f && f->getName().endswith("assert")) {
                     assert(call->arg_size() == 1);
                     res.push_back(&call->getArgOperandUse(0));
                 }
@@ -209,7 +209,7 @@ z3::expr c2z3::_express_v_as_header_phis(Value* v, Loop* inner_loop) {
         return z3::ite(cond, first, second);
     } else if (auto CI = dyn_cast_or_null<CallInst>(inst)) {
         // all calls are treated as unknown values;
-        return z3ctx.int_const("unknwon");
+        return z3ctx.int_const("unknown");
     } else {
         throw UnimplementedOperationException(opcode);
     }
@@ -232,6 +232,29 @@ z3::expr_vector c2z3::get_pure_args(int dim, bool c) {
     return res;
 }
 
+rec_ty c2z3::loop2rec(Loop* loop) {
+    BasicBlock* header = loop->getHeader();
+    rec_ty total_recs;
+    for (auto& phi : header->phis()) {
+        rec_ty phi_rec = header_phi_as_rec(&phi);
+        total_recs.insert(phi_rec.begin(), phi_rec.end());
+    }
+    return total_recs;
+}
+
+initial_ty c2z3::loop2initial(Loop* loop) {
+    BasicBlock* header = loop->getHeader();
+    z3::expr_vector ks(z3ctx);
+    z3::expr_vector vs(z3ctx);
+    for (auto& phi : header->phis()) {
+        initial_ty phi_initial = header_phi_as_initial(&phi);
+        combine_vec(ks, phi_initial.first);
+        combine_vec(vs, phi_initial.second);
+        // total_initial.insert(phi_initial.begin(), phi_initial.end());
+    }
+    return {ks, vs};
+}
+
 z3::expr_vector c2z3::inst2z3(Instruction* inst) {
     Type* tp = inst->getType();
     const char* var_name = inst->getName().data();
@@ -247,6 +270,7 @@ z3::expr_vector c2z3::inst2z3(Instruction* inst) {
     z3::func_decl f = get_z3_function(inst, dim);
     z3::expr_vector args = get_args(dim, false, true, false);
     bool solved = false;
+    // if (loop) solved = true;
     // if (loop) {
     //     std::set<PHINode*> phis = get_header_defs(inst);
     //     z3::expr combination = express_v_as_header_phis(inst);
@@ -254,8 +278,9 @@ z3::expr_vector c2z3::inst2z3(Instruction* inst) {
     //     z3::expr_vector subs_v(z3ctx);
     //     for (auto p : phis) {
     //         rec_ty rec = header_phi_as_rec(p);
+    //         // rec_ty recs = loop2rec(loop);
     //         initial_ty initial = header_phi_as_initial(p);
-    //         rec_s.set_ind_var(z3ctx.int_const("n0"));
+    //         // rec_s.set_ind_var(z3ctx.int_const("n0"));
     //         rec_s.set_eqs(rec);
     //         rec_s.add_initial_values(initial.first, initial.second);
     //         rec_s.simple_solve();
@@ -516,18 +541,23 @@ bool c2z3::is_terminal(Value* v) {
 }
 
 
-z3::expr c2z3::as_loop_expression(Use* u) {
-
+void c2z3::as_loop_expression(Use* u) {
+    _as_loop_expression(u, z3ctx.bool_val(true));
 }
 
 z3::expr c2z3::_as_loop_expression(Use* u, z3::expr acc) {
     Value* v = u->get();
     auto inst = dyn_cast_or_null<Instruction>(v);
+    if (is_terminal(v)) {
+        // return use2z3(u);
+        LoopInfo& LI = LIs.at(main);
+        int dim = 0;
+        if (inst)
+            dim = LI.getLoopDepth(inst->getParent());
+        return v2z3(v, dim, false);
+    }
     assert(inst);
     int opcode = inst->getOpcode();
-    if (is_terminal(v)) {
-
-    }
     if (inst->isBinaryOp()) {
         Use* op0 = &inst->getOperandUse(0);
         Use* op1 = &inst->getOperandUse(1);
@@ -552,6 +582,11 @@ z3::expr c2z3::_as_loop_expression(Use* u, z3::expr acc) {
         z3::expr e2 = _as_loop_expression(op1, acc);
         expression2solve.push_back(e1 - e2);
         return z3ctx.bool_val(true);
+    } else if (auto phi = dyn_cast_or_null<PHINode>(v)) {
+        assert(phi->getNumIncomingValues() == 1);
+        Use* op0 = &phi->getOperandUse(0);
+        z3::expr e = _as_loop_expression(op0, acc);
+        return e;
     } else {
         throw UnimplementedOperationException(opcode);
     }
@@ -583,12 +618,12 @@ z3::expr_vector c2z3::all2z3(Instruction* inst) {
             }
         }
     }
-    // if (loop && !visited_loops.contains(loop)) {
-    //     visited_loops.insert(loop);
-    //     pc_type loop_pc = loop_condition(loop);
-    //     // errs() << loop_pc.first.to_string() << "\n";
-    //     res.push_back(loop_pc.first);
-    // }
+    if (loop && !visited_loops.contains(loop)) {
+        visited_loops.insert(loop);
+        pc_type loop_pc = loop_condition(loop);
+        // errs() << loop_pc.first.to_string() << "\n";
+        res.push_back(loop_pc.first);
+    }
     return res;
 }
 
@@ -625,6 +660,11 @@ validation_type c2z3::check_assert(Use* a, int out_idx) {
     visited_inst.clear();
     z3::solver s(z3ctx);
 
+    as_loop_expression(a);
+    // for (auto e : expression2solve) {
+    //     errs() << e.to_string() << "\n";
+    // }
+
     User* user = a->getUser();
     int dim = 0;
     if (!isa<Constant>(user)) {
@@ -650,6 +690,40 @@ validation_type c2z3::check_assert(Use* a, int out_idx) {
             Value* use_v = u->get();
             auto inst_use = dyn_cast_or_null<Instruction>(use_v);
             if (inst_use) s.add(all2z3(inst_use));
+        }
+    }
+    for (Loop* loop : visited_loops) {
+        rec_ty recs = loop2rec(loop);
+        initial_ty initials = loop2initial(loop);
+        rec_s.set_eqs(recs);
+        rec_s.add_initial_values(initials.first, initials.second);
+        z3::expr_vector ns(z3ctx);
+        z3::expr_vector Ns(z3ctx);
+        ns.push_back(z3ctx.int_const("n0"));
+        Ns.push_back(z3ctx.int_const("N0"));
+        for (auto e : expression2solve) {
+            rec_s.expr_solve(e);
+            rec_s.apply_initial_values();
+            rec_ty res = rec_s.get_res();
+            if (!res.empty()) {
+                z3::expr ind_var = z3ctx.int_const("n0");
+                for (auto r : res) {
+                    z3::expr k = r.first;
+                    s.add(z3::forall(ind_var, z3::implies(ind_var >= 0, k == r.second)));
+                    s.add(k.substitute(ns, Ns) == r.second.substitute(ns, Ns));
+                }
+            }
+            rec_s.simple_solve();
+            rec_s.apply_initial_values();
+            res = rec_s.get_res();
+            if (!res.empty()) {
+                z3::expr ind_var = z3ctx.int_const("n0");
+                for (auto r : res) {
+                    z3::expr k = r.first;
+                    s.add(z3::forall(ind_var, z3::implies(ind_var >= 0, r.first == r.second)));
+                    s.add(k.substitute(ns, Ns) == r.second.substitute(ns, Ns));
+                }
+            }
         }
     }
     std::string filename = "tmp/tmp" + std::to_string(out_idx) + ".smt2";
@@ -758,7 +832,8 @@ pc_type c2z3::loop_condition(Loop* loop) {
     piece = piece.substitute(n1s, ns);
     z3::expr loop_cond = z3::forall(ns, z3::implies(premises, piece));
     z3::expr exit_cond = !piece.substitute(ns, Ns);
-    z3::expr res = loop_cond && exit_cond && cons_N;
+    z3::expr res = loop_cond && cons_N && exit_cond;
+    // z3::expr res = cons_N && exit_cond;
     // res = res && loop_cond && exit_cond;
     // res = res && local_pc.first;
     local_pc.second.insert(cond);
@@ -801,6 +876,54 @@ z3::expr c2z3::simple_path_condition_from_to(BasicBlock* from, BasicBlock* to) {
         res = res || cur_cond;
     }
     return res;
+}
+
+z3::expr c2z3::loop_bound(Loop* loop) {
+    BasicBlock* header = loop->getHeader();
+    BasicBlock* latch = loop->getLoopLatch();
+    Instruction* term = loop->getLoopLatch()->getTerminator();
+    bool is_negated = false;
+    Use* cond = nullptr;
+    if (auto CI = dyn_cast_or_null<BranchInst>(term)) {
+        if (CI->isConditional()) {
+            is_negated = CI->getSuccessor(1) == header;
+            cond = &CI->getOperandUse(0);
+        }
+    }
+    z3::expr piece = use2z3(cond);
+    // z3::func_decl cond_func = get_z3_function(cond);
+    // z3::expr_vector loop_args = get_args(cond_func.arity());
+    // z3::expr piece = cond_func(loop_args);
+
+    pc_type local_pc = path_condition_from_to(header, latch);
+    piece = is_negated ? !piece : piece;
+    piece = piece && local_pc.first;
+    LoopInfo& LI = LIs.at(main);
+    int dim = LI.getLoopDepth(header);
+    z3::expr_vector ns(z3ctx);
+    z3::expr_vector n1s(z3ctx);
+    z3::expr_vector Ns(z3ctx);
+    z3::expr premises = z3ctx.bool_val(true);
+    z3::expr cons_N = z3ctx.bool_val(true);
+    for (int i = 0; i < dim; i++) {
+        std::string idx = "n" + std::to_string(i);
+        ns.push_back(z3ctx.int_const(idx.data()));
+        n1s.push_back(1 + z3ctx.int_const(idx.data()));
+        idx = "N" + std::to_string(i);
+        Ns.push_back(z3ctx.int_const(idx.data()));
+        premises = premises && ns.back() < Ns.back();
+        cons_N = cons_N && Ns.back() >= 0;
+    }
+    piece = piece.substitute(n1s, ns);
+    z3::expr loop_cond = z3::forall(ns, z3::implies(premises, piece));
+    z3::expr exit_cond = !piece.substitute(ns, Ns);
+    z3::expr res = loop_cond && cons_N && exit_cond;
+    // z3::expr res = cons_N && exit_cond;
+    // res = res && loop_cond && exit_cond;
+    // res = res && local_pc.first;
+    local_pc.second.insert(cond);
+    // return res;
+    return {res, local_pc.second};
 }
 
 pc_type c2z3::path_condition_from_to(BasicBlock* from, BasicBlock* to) {

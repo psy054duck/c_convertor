@@ -9,8 +9,8 @@
 //   return;
 // }
 #include <stdbool.h>
-extern unsigned int __VERIFIER_nondet_uint();
-extern int __VERIFIER_nondet_int();
+extern unsigned int __VERIFIER_nondet_uint(void);
+extern int __VERIFIER_nondet_int(void);
 extern void assert(bool);
 #define __VERIFIER_assert(x) assert(x)
 
@@ -19,7 +19,7 @@ int main() {
     i = 0; a = 0; b = 0; n = __VERIFIER_nondet_int();
     if (!(n >= 0 && n <= 1000)) return 0;
     while (i < n) {
-        if (__VERIFIER_nondet_int()) {
+        if (i > 5) {
             a = a + 1;
             b = b + 2;
         } else {

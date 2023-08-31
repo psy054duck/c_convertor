@@ -117,17 +117,43 @@ void rec_solver::simple_solve() {
 void rec_solver::expr_solve(z3::expr e) {
     std::cout << e.to_string() << std::endl;
     z3::expr_vector all_apps(z3ctx);
+    z3::solver solver(z3ctx);
+    
     for (auto& i : rec_eqs) {
         z3::func_decl f = i.first.decl();
-        std::cout << f.arity() << std::endl;
-        if (e.contains(f(ind_var))) {
-            all_apps.push_back(f(ind_var));
-            std::cout << f(ind_var).to_string() << std::endl;
+        solver.add(i.first == i.second);
+        // std::cout << f.arity() << std::endl;
+        // if (e.contains(f(ind_var))) {
+        //     all_apps.push_back(f(ind_var));
+        //     std::cout << f(ind_var).to_string() << std::endl;
+        // }
+    }
+    z3::expr_vector ind_vars(z3ctx);
+    z3::expr_vector ind_varps(z3ctx);
+    z3::expr_vector zeros(z3ctx);
+    ind_vars.push_back(ind_var);
+    ind_varps.push_back(ind_var + 1);
+    zeros.push_back(z3ctx.int_val(0));
+    std::cout << "hhhh\n";
+    z3::expr ep = e.substitute(ind_vars, ind_varps);
+    z3::expr d = z3ctx.int_const("_d");
+    solver.push();
+    solver.add(ep == e + d);
+    auto check_res = solver.check();
+    if (check_res == z3::sat) {
+        z3::model m = solver.get_model();
+        z3::expr instance_d = m.eval(d);
+        solver.pop();
+        solver.add(ep != e + instance_d);
+        auto check_res = solver.check();
+        if (check_res == z3::unsat) {
+            z3::expr closed = e.substitute(ind_vars, zeros) + instance_d*ind_var;
+            res.insert_or_assign(e, closed);
         }
     }
 }
 
-std::map<z3::expr, z3::expr> rec_solver::get_res() const {
+std::map<z3::expr, z3::expr> rec_solver::get_res() {
     return res;
 }
 
