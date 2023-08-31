@@ -80,7 +80,8 @@ class c2z3 {
         z3::expr_vector get_pure_args(int dim, bool c);
         z3::expr get_non_neg_args_cond(int dim);
 
-        void as_loop_expression(Use* u, z3::expr acc);
+        z3::expr loop_expression(Use* u);
+        z3::expr _as_loop_expression(Use* u, z3::expr acc);
         bool is_terminal(Value* v);
 
         std::set<PHINode*> get_header_defs(Value* v);

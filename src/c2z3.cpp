@@ -515,18 +515,47 @@ bool c2z3::is_terminal(Value* v) {
     return bb == &main->getEntryBlock() && isa<CallInst>(v);
 }
 
-void c2z3::as_loop_expression(Use* u, z3::expr acc) {
+
+z3::expr c2z3::as_loop_expression(Use* u) {
+
+}
+
+z3::expr c2z3::_as_loop_expression(Use* u, z3::expr acc) {
     Value* v = u->get();
     auto inst = dyn_cast_or_null<Instruction>(v);
     assert(inst);
     int opcode = inst->getOpcode();
+    if (is_terminal(v)) {
+
+    }
     if (inst->isBinaryOp()) {
         Use* op0 = &inst->getOperandUse(0);
         Use* op1 = &inst->getOperandUse(1);
-        if (opcode == Instruction::And) {
-
+        z3::expr e1 = _as_loop_expression(op0, acc);
+        z3::expr e2 = _as_loop_expression(op1, acc);
+        if (opcode == Instruction::And || opcode == Instruction::Or) {
+            expression2solve.push_back(e1);
+            expression2solve.push_back(e2);
+            return z3ctx.bool_val(true);
+        } else if (opcode == Instruction::Add) {
+            return e1 + e2;
+        } else if (opcode == Instruction::Sub) {
+            return e1 - e2;
+        } else if (opcode == Instruction::Mul) {
+            return e1 * e2;
         }
+    } else if (auto CI = dyn_cast_or_null<ICmpInst>(v)) {
+        auto pred = CI->getPredicate();
+        Use* op0 = &inst->getOperandUse(0);
+        Use* op1 = &inst->getOperandUse(1);
+        z3::expr e1 = _as_loop_expression(op0, acc);
+        z3::expr e2 = _as_loop_expression(op1, acc);
+        expression2solve.push_back(e1 - e2);
+        return z3ctx.bool_val(true);
+    } else {
+        throw UnimplementedOperationException(opcode);
     }
+
 }
 
 z3::expr_vector c2z3::all2z3(Instruction* inst) {
