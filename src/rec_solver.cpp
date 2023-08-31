@@ -82,13 +82,17 @@ bool is_one_stride_simple_rec(z3::expr lhs, z3::expr rhs) {
     z3::expr lhs_arg = lhs.arg(0);
 }
 
-rec_solver::rec_solver(std::map<z3::expr, z3::expr>& eqs, z3::expr var, z3::context& z3ctx): z3ctx(z3ctx), ind_var(z3ctx), initial_values_k(z3ctx), initial_values_v(z3ctx) {
+rec_solver::rec_solver(rec_ty& eqs, z3::expr var, z3::context& z3ctx): z3ctx(z3ctx), ind_var(z3ctx), initial_values_k(z3ctx), initial_values_v(z3ctx) {
     set_eqs(eqs);
     set_ind_var(var);
 }
 
-void rec_solver::set_eqs(std::map<z3::expr, z3::expr>& eqs) {
-    rec_eqs = eqs;
+void rec_solver::set_eqs(rec_ty& eqs) {
+    for (auto r : eqs) {
+        // std::cout << r.first.to_string() << " = " << r.second.to_string() << "\n";
+        rec_eqs.insert_or_assign(r.first, r.second);
+    }
+    // rec_eqs = eqs;
 }
 
 void rec_solver::simple_solve() {
@@ -120,21 +124,23 @@ void rec_solver::expr_solve(z3::expr e) {
     z3::solver solver(z3ctx);
     
     for (auto& i : rec_eqs) {
-        z3::func_decl f = i.first.decl();
+        // z3::func_decl f = i.first.decl();
         solver.add(i.first == i.second);
+        // std::cout << i.first.to_string() << " = " << i.second.to_string() << "\n";
+        // std::cout << "***********8\n";
         // std::cout << f.arity() << std::endl;
         // if (e.contains(f(ind_var))) {
         //     all_apps.push_back(f(ind_var));
         //     std::cout << f(ind_var).to_string() << std::endl;
         // }
     }
+    // std::cout << solver.to_smt2() << "\n";
     z3::expr_vector ind_vars(z3ctx);
     z3::expr_vector ind_varps(z3ctx);
     z3::expr_vector zeros(z3ctx);
     ind_vars.push_back(ind_var);
     ind_varps.push_back(ind_var + 1);
     zeros.push_back(z3ctx.int_val(0));
-    std::cout << "hhhh\n";
     z3::expr ep = e.substitute(ind_vars, ind_varps);
     z3::expr d = z3ctx.int_const("_d");
     solver.push();
@@ -153,7 +159,7 @@ void rec_solver::expr_solve(z3::expr e) {
     }
 }
 
-std::map<z3::expr, z3::expr> rec_solver::get_res() {
+closed_form_ty rec_solver::get_res() {
     return res;
 }
 
@@ -178,5 +184,11 @@ void rec_solver::add_initial_values(z3::expr_vector k, z3::expr_vector v) {
 void rec_solver::apply_initial_values() {
     for (auto& r : res) {
         r.second = r.second.substitute(initial_values_k, initial_values_v);
+    }
+}
+
+void rec_solver::print_recs() {
+    for (auto r : rec_eqs) {
+        std::cout << r.first.to_string() << " = " << r.second.to_string() << "\n";
     }
 }

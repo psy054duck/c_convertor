@@ -237,7 +237,11 @@ rec_ty c2z3::loop2rec(Loop* loop) {
     rec_ty total_recs;
     for (auto& phi : header->phis()) {
         rec_ty phi_rec = header_phi_as_rec(&phi);
+
         total_recs.insert(phi_rec.begin(), phi_rec.end());
+    }
+    for (auto r : total_recs) {
+        errs() << r.first.to_string() << " = " << r.second.to_string() << "\n";
     }
     return total_recs;
 }
@@ -694,6 +698,9 @@ validation_type c2z3::check_assert(Use* a, int out_idx) {
     }
     for (Loop* loop : visited_loops) {
         rec_ty recs = loop2rec(loop);
+        // for (auto r : recs) {
+        //     errs() << r.first.to_string() << " = " << r.second.to_string() << "\n";
+        // }
         initial_ty initials = loop2initial(loop);
         rec_s.set_eqs(recs);
         rec_s.add_initial_values(initials.first, initials.second);
@@ -711,6 +718,7 @@ validation_type c2z3::check_assert(Use* a, int out_idx) {
                     z3::expr k = r.first;
                     s.add(z3::forall(ind_var, z3::implies(ind_var >= 0, k == r.second)));
                     s.add(k.substitute(ns, Ns) == r.second.substitute(ns, Ns));
+                    // errs() << (k.substitute(ns, Ns) == r.second.substitute(ns, Ns)).to_string() << "\n";
                 }
             }
             rec_s.simple_solve();
