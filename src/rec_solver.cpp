@@ -119,7 +119,7 @@ void rec_solver::simple_solve() {
 }
 
 void rec_solver::expr_solve(z3::expr e) {
-    std::cout << e.to_string() << std::endl;
+    // std::cout << e.to_string() << std::endl;
     z3::expr_vector all_apps(z3ctx);
     z3::solver solver(z3ctx);
     
