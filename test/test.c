@@ -15,19 +15,33 @@ extern void assert(bool);
 #define __VERIFIER_assert(x) assert(x)
 
 int main() {
-    int i, n, a, b;
-    i = 0; a = 0; b = 0; n = __VERIFIER_nondet_int();
-    if (!(n >= 0 && n <= 1000)) return 0;
-    while (i < n) {
-        if (i > 5) {
-            a = a + 1;
-            b = b + 2;
+    int X, Y;
+    int v, x, y;
+    X = __VERIFIER_nondet_int();
+    Y = __VERIFIER_nondet_int();
+    v = 2 * Y - X;
+    y = 0;
+    x = 0;
+
+    while (1) {
+	// __VERIFIER_assert(2*Y*x - 2*X*y - X + 2*Y - v == 0);
+        if (!(x <= X))
+            break;
+        // out[x] = y
+
+        if (v < 0) {
+            v = v + 2 * Y;
         } else {
-            a = a + 2;
-            b = b + 1;
+            v = v + 2 * (Y - X);
+            y++;
         }
-        i = i + 1;
+        x++;
     }
-    __VERIFIER_assert(a + b == 3*n);
+	__VERIFIER_assert(2*Y*x - 2*X*y - X + 2*Y - v == 0);
+    // __VERIFIER_assert(2*Y*x - 2*x*y - X + 2*Y - v + 2*y == 0);
+    // 2Yx - 2Xy - X + 2Y - v
+    // 2Y(x + 1) - 2Xy - X + 2Y - v - 2Y
+    // 2Yx + 2Y - 2Xy - X - v
+
     return 0;
 }

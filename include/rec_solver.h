@@ -34,5 +34,6 @@ class rec_solver {
         void expr_solve(z3::expr);
         void apply_initial_values();
         void print_recs();
+        void rec2file();
 };
 #endif

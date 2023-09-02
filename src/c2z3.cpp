@@ -210,6 +210,13 @@ z3::expr c2z3::_express_v_as_header_phis(Value* v, Loop* inner_loop) {
     } else if (auto CI = dyn_cast_or_null<CallInst>(inst)) {
         // all calls are treated as unknown values;
         return z3ctx.int_const("unknown");
+    } else if (auto CI = dyn_cast_or_null<PHINode>(inst)) {
+        z3::expr ite = phi2ite_header(CI);
+        if (ite) {
+            return ite;
+        } else {
+            throw UnimplementedOperationException(opcode);
+        }
     } else {
         throw UnimplementedOperationException(opcode);
     }
@@ -218,6 +225,44 @@ z3::expr c2z3::_express_v_as_header_phis(Value* v, Loop* inner_loop) {
     //     final_res = final_res && e;
     // }
     // return final_res;
+}
+
+z3::expr c2z3::phi2ite_header(PHINode* phi) {
+    DominatorTree& DT = DTs.at(main);
+    PostDominatorTree& PDT = PDTs.at(main);
+    assert(phi->getNumIncomingValues() == 2);
+    BasicBlock* bb0 = phi->getIncomingBlock(0);
+    BasicBlock* bb1 = phi->getIncomingBlock(1);
+    BasicBlock* merge_bb = DT.findNearestCommonDominator(bb0, bb1);
+    BasicBlock* curB = phi->getParent();
+    LoopInfo& LI = LIs.at(main);
+    int dim = LI.getLoopDepth(curB);
+    if (PDT.dominates(curB, merge_bb)) {
+        const Instruction* term = merge_bb->getTerminator();
+        const BranchInst* branch = dyn_cast<BranchInst>(term);
+        if (branch && branch->isConditional()) {
+            Value* condV = branch->getCondition();
+            const BasicBlock* true_b = bb0;
+            const BasicBlock* false_b = bb1;
+            if (DT.dominates(branch->getSuccessor(0), bb0) || DT.dominates(branch->getSuccessor(1), bb1)) {
+                true_b = bb0;
+                false_b = bb1;
+            } else {
+                true_b = bb1;
+                false_b = bb0;
+            }
+            int true_idx = phi->getBasicBlockIndex(true_b);
+            int false_idx = phi->getBasicBlockIndex(false_b);
+            z3::expr cond = v2z3(condV, dim, false);
+            z3::expr v0 = v2z3(phi->getIncomingValue(true_idx), dim, false);
+            z3::expr v1 = v2z3(phi->getIncomingValue(false_idx), dim, false);
+            return z3::ite(cond, v0, v1);
+            // Value* new_select = builder.CreateSelect(condV, phi->getIncomingValue(true_idx), phi->getIncomingValue(false_idx));
+            // new_select->setName(v->getName());
+            // inst = dyn_cast<Instruction>(new_select);
+        }
+    }
+    return z3ctx.bool_val(false);
 }
 
 z3::expr_vector c2z3::get_pure_args(int dim, bool c) {
@@ -970,6 +1015,7 @@ z3::expr c2z3::loop_bound(Loop* loop) {
     // z3::expr piece = cond_func(loop_args);
 
     pc_type local_pc = path_condition_from_to(header, latch);
+    // errs() << local_pc.first.to_string() << "\n";
     std::set<Use*> all_used = local_pc.second;
     std::set<PHINode*> all_phis;
     if (cond) all_used.insert(cond);
@@ -1026,9 +1072,11 @@ z3::expr c2z3::loop_bound(Loop* loop) {
         piece = piece.substitute(src, dst);
     }
     // errs() << piece.to_string() << "\n";
+    // errs() << piece.to_string() << "\n";
     z3::expr loop_cond = z3::forall(ns, z3::implies(premises, piece));
     z3::expr exit_cond = !piece.substitute(ns, Ns);
     z3::expr res = loop_cond && cons_N && exit_cond;
+    // errs() << res.to_string() << "\n";
     z3::tactic t(z3ctx, "qe");
     z3::goal g(z3ctx);
     g.add(res);
@@ -1038,7 +1086,6 @@ z3::expr c2z3::loop_bound(Loop* loop) {
         final_res = final_res && r[i].as_expr();
         // errs() << r[i].as_expr().to_string() << "\n";
     }
-
     // errs() << exit_cond.to_string() << "\n";
     // z3::expr res = cons_N && exit_cond;
     // res = res && loop_cond && exit_cond;
@@ -1066,6 +1113,15 @@ pc_type c2z3::path_condition_from_to(BasicBlock* from, BasicBlock* to) {
         }
     }
     res.first = res.first.simplify();
+    z3::tactic t = z3::tactic(z3ctx, "tseitin-cnf") & z3::tactic(z3ctx, "ctx-solver-simplify");
+    z3::goal g(z3ctx);
+    g.add(res.first);
+    auto qq = t.apply(g);
+    res.first = z3ctx.bool_val(true);
+    for (int i = 0; i < qq.size(); i++) {
+        // errs() << qq[i].as_expr().to_string() << "\n";
+        res.first = res.first && qq[i].as_expr();
+    }
     return res;
 }
 

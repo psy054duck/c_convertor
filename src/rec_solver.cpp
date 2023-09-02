@@ -119,20 +119,12 @@ void rec_solver::simple_solve() {
 }
 
 void rec_solver::expr_solve(z3::expr e) {
-    // std::cout << e.to_string() << std::endl;
+    std::cout << e.to_string() << std::endl;
     z3::expr_vector all_apps(z3ctx);
     z3::solver solver(z3ctx);
     
     for (auto& i : rec_eqs) {
-        // z3::func_decl f = i.first.decl();
         solver.add(i.first == i.second);
-        // std::cout << i.first.to_string() << " = " << i.second.to_string() << "\n";
-        // std::cout << "***********8\n";
-        // std::cout << f.arity() << std::endl;
-        // if (e.contains(f(ind_var))) {
-        //     all_apps.push_back(f(ind_var));
-        //     std::cout << f(ind_var).to_string() << std::endl;
-        // }
     }
     // std::cout << solver.to_smt2() << "\n";
     z3::expr_vector ind_vars(z3ctx);
@@ -146,15 +138,38 @@ void rec_solver::expr_solve(z3::expr e) {
     solver.push();
     solver.add(ep == e + d);
     auto check_res = solver.check();
+    bool solved = false;
     if (check_res == z3::sat) {
+        // std::cout << "hhhhh\n";
         z3::model m = solver.get_model();
         z3::expr instance_d = m.eval(d);
         solver.pop();
+        solver.push();
         solver.add(ep != e + instance_d);
         auto check_res = solver.check();
         if (check_res == z3::unsat) {
             z3::expr closed = e.substitute(ind_vars, zeros) + instance_d*ind_var;
             res.insert_or_assign(e, closed);
+            solved = true;
+        }
+        solver.pop();
+    } else {
+        solver.pop();
+    }
+    if (!solved) {
+        solver.push();
+        solver.add(ep == d);
+        auto check_res = solver.check();
+        if (check_res == z3::sat) {
+            z3::model m = solver.get_model();
+            z3::expr instance_d = m.eval(d);
+            solver.pop();
+            solver.add(ep != instance_d);
+            auto check_res = solver.check();
+            // std::cout << solver.get_model() << "\n";
+            if (check_res == z3::unsat) {
+                res.insert_or_assign(e, instance_d);
+            }
         }
     }
 }
@@ -185,6 +200,10 @@ void rec_solver::apply_initial_values() {
     for (auto& r : res) {
         r.second = r.second.substitute(initial_values_k, initial_values_v);
     }
+}
+
+void rec_solver::rec2file() {
+
 }
 
 void rec_solver::print_recs() {

@@ -95,6 +95,8 @@ class c2z3 {
         rec_ty loop2rec(Loop* loop);
         initial_ty loop2initial(Loop* loop);
         z3::expr loop_bound(Loop* loop);
+        
+        z3::expr phi2ite_header(PHINode* phi);
 
         bool is_back_edge(BasicBlock* from, BasicBlock* to);
 
