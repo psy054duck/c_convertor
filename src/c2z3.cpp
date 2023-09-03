@@ -253,9 +253,12 @@ z3::expr c2z3::phi2ite_header(PHINode* phi) {
             }
             int true_idx = phi->getBasicBlockIndex(true_b);
             int false_idx = phi->getBasicBlockIndex(false_b);
-            z3::expr cond = v2z3(condV, dim, false);
-            z3::expr v0 = v2z3(phi->getIncomingValue(true_idx), dim, false);
-            z3::expr v1 = v2z3(phi->getIncomingValue(false_idx), dim, false);
+            // z3::expr cond = v2z3(condV, dim, false);
+            z3::expr cond = express_v_as_header_phis(condV);
+            z3::expr v0 = express_v_as_header_phis(phi->getIncomingValue(true_idx));
+            z3::expr v1 = express_v_as_header_phis(phi->getIncomingValue(false_idx));
+            // z3::expr v0 = v2z3(phi->getIncomingValue(true_idx), dim, false);
+            // z3::expr v1 = v2z3(phi->getIncomingValue(false_idx), dim, false);
             return z3::ite(cond, v0, v1);
             // Value* new_select = builder.CreateSelect(condV, phi->getIncomingValue(true_idx), phi->getIncomingValue(false_idx));
             // new_select->setName(v->getName());
@@ -288,6 +291,7 @@ rec_ty c2z3::loop2rec(Loop* loop) {
     // for (auto r : total_recs) {
     //     errs() << r.first.to_string() << " = " << r.second.to_string() << "\n";
     // }
+    // errs() << "**************\n";
     return total_recs;
 }
 

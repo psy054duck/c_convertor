@@ -37,8 +37,8 @@ int main() {
         }
         x++;
     }
-	__VERIFIER_assert(2*Y*x - 2*X*y - X + 2*Y - v == 0);
-    // __VERIFIER_assert(2*Y*x - 2*x*y - X + 2*Y - v + 2*y == 0);
+	// __VERIFIER_assert(2*Y*x - 2*X*y - X + 2*Y - v == 0);
+    __VERIFIER_assert(2*Y*x - 2*x*y - X + 2*Y - v + 2*y == 0);
     // 2Yx - 2Xy - X + 2Y - v
     // 2Y(x + 1) - 2Xy - X + 2Y - v - 2Y
     // 2Yx + 2Y - 2Xy - X - v
