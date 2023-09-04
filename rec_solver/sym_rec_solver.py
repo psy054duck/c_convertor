@@ -76,7 +76,7 @@ def pretty_solve_and_print(filename):
                 for j, var_closed in enumerate(e):
                     var_mapping[variables[j]].append((var_closed.subs(n_s, n_s-k_s), z3.And(condition, n >= k+len(first_elements_after_k), (n-k) % period == i)))
 
-def main(filename):
+def solve_file(filename):
     res, variables, initial_symbols = solve_sym(filename)
     return ClosedForm(res, variables, initial_symbols, z3.Int('n'))
 

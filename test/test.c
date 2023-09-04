@@ -14,19 +14,23 @@ extern int __VERIFIER_nondet_int(void);
 extern void assert(bool);
 #define __VERIFIER_assert(x) assert(x)
 
-int main(void) {
-  int x = 0;
-  int i = 0;
-
-  while (x < 100000000) {
-    if (x < 10000000) {
-      x++;
-    } else {
-      x += 2;
-    }
-    i++;
-  }
-
-  __VERIFIER_assert(x == i) ;
+int main()
+{
+	int x=0,y=500000,z=0;
+	x=0;
+	while(x<1000000){
+		if(x<500000)
+			x++;
+		else{
+			x++;
+			y++;
+		}
+	}
+	while(y>0){
+		x--;
+		z++;
+		y=y-2;
+	}
+	__VERIFIER_assert(x==z);
+	return 0;
 }
-

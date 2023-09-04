@@ -806,8 +806,6 @@ validation_type c2z3::check_assert(Use* a, int out_idx) {
         }
     }
     for (Loop* loop : visited_loops) {
-        z3::expr bnd = loop_bound(loop);
-        s.add(bnd);
         rec_ty recs = loop2rec(loop);
         // for (auto r : recs) {
         //     errs() << r.first.to_string() << " = " << r.second.to_string() << "\n";
@@ -815,36 +813,40 @@ validation_type c2z3::check_assert(Use* a, int out_idx) {
         initial_ty initials = loop2initial(loop);
         rec_s.set_eqs(recs);
         rec_s.add_initial_values(initials.first, initials.second);
-        rec_s.rec2file();
+        rec_s.solve();
+        // rec_s.rec2file();
+        // rec_s.file2z3();
+        z3::expr bnd = loop_bound(loop);
+        s.add(bnd);
         z3::expr_vector ns(z3ctx);
         z3::expr_vector Ns(z3ctx);
         ns.push_back(z3ctx.int_const("n0"));
         Ns.push_back(z3ctx.int_const("N0"));
-        for (auto e : expression2solve) {
-            rec_s.expr_solve(e);
-            rec_s.apply_initial_values();
-            rec_ty res = rec_s.get_res();
-            if (!res.empty()) {
-                z3::expr ind_var = z3ctx.int_const("n0");
-                for (auto r : res) {
-                    z3::expr k = r.first;
-                    s.add(z3::forall(ind_var, z3::implies(ind_var >= 0, k == r.second)));
-                    s.add(k.substitute(ns, Ns) == r.second.substitute(ns, Ns));
-                    // errs() << (k.substitute(ns, Ns) == r.second.substitute(ns, Ns)).to_string() << "\n";
-                }
-            }
-            rec_s.simple_solve();
-            rec_s.apply_initial_values();
-            res = rec_s.get_res();
-            if (!res.empty()) {
-                z3::expr ind_var = z3ctx.int_const("n0");
-                for (auto r : res) {
-                    z3::expr k = r.first;
-                    s.add(z3::forall(ind_var, z3::implies(ind_var >= 0, r.first == r.second)));
-                    s.add(k.substitute(ns, Ns) == r.second.substitute(ns, Ns));
-                }
+        // for (auto e : expression2solve) {
+            // rec_s.expr_solve(e);
+            // rec_s.apply_initial_values();
+        rec_ty res = rec_s.get_res();
+        if (!res.empty()) {
+            z3::expr ind_var = z3ctx.int_const("n0");
+            for (auto r : res) {
+                z3::expr k = r.first;
+                s.add(z3::forall(ind_var, z3::implies(ind_var >= 0, k == r.second)));
+                s.add(k.substitute(ns, Ns) == r.second.substitute(ns, Ns));
+                // errs() << (k.substitute(ns, Ns) == r.second.substitute(ns, Ns)).to_string() << "\n";
             }
         }
+            // rec_s.simple_solve();
+            // rec_s.apply_initial_values();
+            // res = rec_s.get_res();
+            // if (!res.empty()) {
+            //     z3::expr ind_var = z3ctx.int_const("n0");
+            //     for (auto r : res) {
+            //         z3::expr k = r.first;
+            //         s.add(z3::forall(ind_var, z3::implies(ind_var >= 0, r.first == r.second)));
+            //         s.add(k.substitute(ns, Ns) == r.second.substitute(ns, Ns));
+            //     }
+            // }
+        // }
     }
     std::string filename = "tmp/tmp" + std::to_string(out_idx) + ".smt2";
     std::ofstream out(filename);
@@ -1061,28 +1063,27 @@ z3::expr c2z3::loop_bound(Loop* loop) {
     }
     for (auto phi : all_phis) {
         initial_ty initial = header_phi_as_initial(phi);
-        z3::expr_vector src(z3ctx);
-        z3::expr_vector dst(z3ctx);
-        z3::expr to_solved = v2z3(phi, dim, false);
+        // z3::expr to_solved = v2z3(phi, dim, false);
         // errs() << to_solved.to_string() << "\n";
         rec_s.add_initial_values(initial.first, initial.second);
-        rec_s.expr_solve(to_solved);
-        rec_s.apply_initial_values();
-        closed_form_ty closed = rec_s.get_res();
-        for (auto r : closed) {
-            src.push_back(r.first);
-            dst.push_back(r.second);
-            // errs() << r.first.to_string() << " = " << r.second.to_string() << "\n";
-        }
-        piece = piece.substitute(src, dst);
     }
+    rec_s.solve();
+    z3::expr_vector src(z3ctx);
+    z3::expr_vector dst(z3ctx);
+    closed_form_ty closed = rec_s.get_res();
+    for (auto r : closed) {
+        src.push_back(r.first);
+        dst.push_back(r.second);
+        // errs() << r.first.to_string() << " = " << r.second.to_string() << "\n";
+    }
+    piece = piece.substitute(src, dst);
     // errs() << piece.to_string() << "\n";
     // errs() << piece.to_string() << "\n";
     z3::expr loop_cond = z3::forall(ns, z3::implies(premises, piece));
     z3::expr exit_cond = !piece.substitute(ns, Ns);
     z3::expr res = loop_cond && cons_N && exit_cond;
     // errs() << res.to_string() << "\n";
-    z3::tactic t(z3ctx, "qe");
+    z3::tactic t = z3::tactic(z3ctx, "qe"); // & z3::tactic(z3ctx, "ctx-solver-simplify");
     z3::goal g(z3ctx);
     g.add(res);
     auto r = t.apply(g);

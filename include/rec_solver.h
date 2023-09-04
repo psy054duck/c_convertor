@@ -3,6 +3,7 @@
 #include "z3++.h"
 #include <map>
 #include <set>
+#include <fstream>
 
 struct ExprCmp {
     bool operator()(const z3::expr& lhs, const z3::expr& rhs) const {
@@ -36,9 +37,17 @@ class rec_solver {
         void expr_solve(z3::expr);
         void apply_initial_values();
         void print_recs();
+        void _format();
         void rec2file();
-        void _parse_expr(z3::expr k, z3::expr e);
+        void _rec2file(std::ofstream& out);
+        std::vector<z3::expr> parse_expr(z3::expr e);
         std::vector<z3::expr> parse_cond(z3::expr);
         bool is_ite_free(z3::expr e);
+        bool implies(z3::expr e1, z3::expr e2);
+        std::string z3_infix(z3::expr e);
+        void file2z3();
+        void _file2z3(const std::string& filename);
+        void print_res();
+        void solve();
 };
 #endif
