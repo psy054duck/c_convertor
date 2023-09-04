@@ -76,7 +76,7 @@ class c2z3 {
 
         z3::func_decl get_z3_function(Value* v, int dim);
         z3::func_decl get_z3_function(Use* u);
-        z3::expr_vector get_args(int dim, bool c, bool plus, bool prefix);
+        z3::expr_vector get_args(int dim, bool c, bool plus, bool prefix, Loop* loop=nullptr);
         z3::expr_vector get_pure_args(int dim, bool c);
         z3::expr get_non_neg_args_cond(int dim);
 
@@ -102,6 +102,8 @@ class c2z3 {
 
         void test_loop_condition();
 
+        void get_loop_idx();
+
     private:
         std::unique_ptr<Module> m;
         Function* main;
@@ -121,6 +123,7 @@ class c2z3 {
         std::set<Loop*> visited_loops;
         rec_solver rec_s;
         z3::expr_vector expression2solve;
+        std::map<Loop*, int> loop2idx;
 };
 
 #endif

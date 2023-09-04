@@ -5,3 +5,4 @@ tmp*
 /build*
 test/*.ll
 .DS_Store
+*.pyc

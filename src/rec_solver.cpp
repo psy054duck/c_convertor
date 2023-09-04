@@ -96,9 +96,9 @@ void rec_solver::set_eqs(rec_ty& eqs) {
 }
 
 void rec_solver::solve() {
-    rec2file();
+    initial_ty initial_back = rec2file();
     system("python rec_solver.py tmp/test.txt");
-    file2z3();
+    file2z3(initial_back);
 }
 
 void rec_solver::simple_solve() {
@@ -209,10 +209,11 @@ void rec_solver::apply_initial_values() {
     }
 }
 
-void rec_solver::rec2file() {
+initial_ty rec_solver::rec2file() {
     std::ofstream out("tmp/test.txt", std::ios::out);
-    _rec2file(out);
+    initial_ty initial_back = _rec2file(out);
     out.close();
+    return initial_back;
 }
 
 std::string rec_solver::z3_infix(z3::expr e) {
@@ -256,16 +257,19 @@ std::string rec_solver::z3_infix(z3::expr e) {
         assert(args.size() == 2);
         return args_infix[0] + " != " + args_infix[1];
     } else {
-        std::cout << e.to_string() << "\n";
-        assert(false);
+        return e.to_string();
+        // std::cout << e.to_string() << "\n";
+        // assert(false);
     }
 }
 
-void rec_solver::_rec2file(std::ofstream& out) {
+initial_ty rec_solver::_rec2file(std::ofstream& out) {
     _format();
     z3::expr_vector src(z3ctx);
     z3::expr_vector dst(z3ctx);
     int name_idx = 0;
+    z3::expr_vector initial_src(z3ctx);
+    z3::expr_vector initial_dst(z3ctx);
     for (auto rec : rec_eqs) {
         z3::func_decl f = rec.first.decl();
         std::string new_name = "a" + std::to_string(name_idx);
@@ -283,10 +287,15 @@ void rec_solver::_rec2file(std::ofstream& out) {
     for (int i = 0; i < initial_values_k.size(); i++) {
         z3::expr lhs = initial_values_k[i];
         z3::expr rhs = initial_values_v[i];
-        out << z3_infix(lhs.substitute(src, dst)) << " = " << z3_infix(rhs.substitute(src, dst)) << ";\n";
+        z3::expr new_lhs = lhs.substitute(src, dst);
+        initial_src.push_back(new_lhs);
+        initial_dst.push_back(rhs);
+        out << z3_infix(new_lhs) << " = " << z3_infix(new_lhs) << ";\n";
     }
 
-    out << "if (" << z3_infix(conds[0].substitute(src, dst)) << ") {\n";
+    z3::expr first_cond = z3ctx.bool_val(true);
+    if (conds.size() > 0) first_cond = conds[0];
+    out << "if (" << z3_infix(first_cond.substitute(src, dst)) << ") {\n";
     for (auto k_e : exprs[0]) {
         z3::expr lhs = k_e.first;
         z3::expr rhs = k_e.second;
@@ -302,7 +311,7 @@ void rec_solver::_rec2file(std::ofstream& out) {
         }
         out << "} ";
     }
-    if (conds.size() < exprs.size()) {
+    if (conds.size() < exprs.size() && conds.size() > 0) {
         out << "else {\n";
         for (auto k_e : exprs.back()) {
             z3::expr lhs = k_e.first;
@@ -311,6 +320,7 @@ void rec_solver::_rec2file(std::ofstream& out) {
         }
         out << "}";
     }
+    return {initial_src, initial_dst};
 }
 
 void rec_solver::_format() {
@@ -392,11 +402,11 @@ bool rec_solver::is_ite_free(z3::expr e) {
     return res;
 }
 
-void rec_solver::file2z3() {
-    _file2z3("tmp/closed.smt2");
+void rec_solver::file2z3(initial_ty initial_back) {
+    _file2z3("tmp/closed.smt2", initial_back);
 }
 
-void rec_solver::_file2z3(const std::string& filename) {
+void rec_solver::_file2z3(const std::string& filename, initial_ty initial_back) {
     z3::expr_vector c = z3ctx.parse_file(filename.data());
     int idx_name = 0;
     z3::expr_vector src(z3ctx);
@@ -417,10 +427,11 @@ void rec_solver::_file2z3(const std::string& filename) {
         assert(kind == Z3_OP_EQ);
         z3::expr k = args[0];
         z3::expr v = args[1];
-        res.insert_or_assign(k.substitute(src, dst), v.substitute(src, dst));
+        std::cout << v.to_string() << "\n";
+        res.insert_or_assign(k.substitute(src, dst), v.substitute(initial_back.first, initial_back.second).substitute(src, dst));
         // std::cout << e.to_string() << "\n";
     }
-    // print_res();
+    print_res();
 }
 
 void rec_solver::print_recs() {

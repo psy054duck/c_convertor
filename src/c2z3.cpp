@@ -61,6 +61,7 @@ c2z3::c2z3(std::unique_ptr<Module> &mod): m(std::move(mod)), rec_s(z3ctx), expre
             }
         }
     }
+    get_loop_idx();
 }
 
 use_vector c2z3::getAllAssertions() {
@@ -417,7 +418,7 @@ z3::expr_vector c2z3::inst2z3(Instruction* inst) {
             // phi in header
             if (loop && loop->getHeader() == block) {
                 std::string n_idx = "n" + std::to_string(dim - 1);
-                std::string N_idx = "N" + std::to_string(dim - 1);
+                std::string N_idx = "N_" + std::to_string(loop2idx[loop]) + "_" + std::to_string(dim - 1);
                 z3::expr z3_nidx = z3ctx.int_const(n_idx.data());
                 z3::expr z3_Nidx = z3ctx.int_const(N_idx.data());
                 if (!loop->contains(in_bb)) {
@@ -448,7 +449,7 @@ z3::expr_vector c2z3::inst2z3(Instruction* inst) {
                     local_cond = cond_negated.second ? !local_cond : local_cond;
                 } else if (prev_loop) {
                     int prev_dim = LI.getLoopDepth(prev_loop->getHeader());
-                    z3::expr_vector N_args = get_args(prev_dim, true, false, true);
+                    z3::expr_vector N_args = get_args(prev_dim, true, false, true, prev_loop);
                     z3::expr_vector n1_args = get_args(prev_dim, false, true, true);
                     local_cond = cond_negated.second ? !local_cond : local_cond;
                     local_cond = local_cond.simplify().substitute(n1_args, N_args);
@@ -554,7 +555,7 @@ z3::expr c2z3::use2z3(Use* u) {
         }
     } else if (def_loop) {
         args.pop_back();
-        std::string idx = "N" + std::to_string(dim - 1);
+        std::string idx = "N_" + std::to_string(loop2idx[def_loop]) + "_" + std::to_string(dim - 1);
         args.push_back(z3ctx.int_const(idx.data()));
     }
     // z3::func_decl f = z3ctx.function(var_name, params, ret_sort);
@@ -811,6 +812,7 @@ validation_type c2z3::check_assert(Use* a, int out_idx) {
         //     errs() << r.first.to_string() << " = " << r.second.to_string() << "\n";
         // }
         initial_ty initials = loop2initial(loop);
+        auto rec_s = rec_solver(z3ctx);
         rec_s.set_eqs(recs);
         rec_s.add_initial_values(initials.first, initials.second);
         rec_s.solve();
@@ -821,7 +823,7 @@ validation_type c2z3::check_assert(Use* a, int out_idx) {
         z3::expr_vector ns(z3ctx);
         z3::expr_vector Ns(z3ctx);
         ns.push_back(z3ctx.int_const("n0"));
-        Ns.push_back(z3ctx.int_const("N0"));
+        Ns.push_back(z3ctx.int_const(("N_" + std::to_string(loop2idx[loop]) + "_0").data()));
         // for (auto e : expression2solve) {
             // rec_s.expr_solve(e);
             // rec_s.apply_initial_values();
@@ -896,9 +898,13 @@ z3::func_decl c2z3::get_z3_function(Value* v, int dim) {
 }
 
 
-z3::expr_vector c2z3::get_args(int dim, bool c, bool plus, bool prefix) {
+z3::expr_vector c2z3::get_args(int dim, bool c, bool plus, bool prefix, Loop* loop) {
     z3::expr_vector args(z3ctx);
-    const char* idx_prefix = c ? "N" : "n";
+    // const char* idx_prefix = c ? "N" : "n";
+    std::string idx_prefix = "n";
+    if (c) {
+        idx_prefix = "N_" + std::to_string(loop2idx[loop]) + "_";
+    }
     for (int i = 0; i < dim; i++) {
         std::string n_name = idx_prefix + std::to_string(i);
         if (plus) {
@@ -946,7 +952,7 @@ pc_type c2z3::loop_condition(Loop* loop) {
         std::string idx = "n" + std::to_string(i);
         ns.push_back(z3ctx.int_const(idx.data()));
         n1s.push_back(1 + z3ctx.int_const(idx.data()));
-        idx = "N" + std::to_string(i);
+        idx = "N_" + std::to_string(loop2idx[loop]) + "_" + std::to_string(i);
         Ns.push_back(z3ctx.int_const(idx.data()));
         premises = premises && ns.back() < Ns.back();
         cons_N = cons_N && Ns.back() >= 0;
@@ -1028,7 +1034,10 @@ z3::expr c2z3::loop_bound(Loop* loop) {
     if (cond) all_used.insert(cond);
 
     rec_ty loop_recs = loop2rec(loop);
+    initial_ty loop_initials = loop2initial(loop);
+    auto rec_s = rec_solver(z3ctx);
     rec_s.set_eqs(loop_recs);
+    rec_s.add_initial_values(loop_initials.first, loop_initials.second);
 
     piece = is_negated ? !piece : piece;
     piece = piece && local_pc.first;
@@ -1043,7 +1052,7 @@ z3::expr c2z3::loop_bound(Loop* loop) {
         std::string idx = "n" + std::to_string(i);
         ns.push_back(z3ctx.int_const(idx.data()));
         n1s.push_back(1 + z3ctx.int_const(idx.data()));
-        idx = "N" + std::to_string(i);
+        idx = "N_" + std::to_string(loop2idx[loop]) + "_" + std::to_string(i);
         Ns.push_back(z3ctx.int_const(idx.data()));
         premises = premises && ns.back() < Ns.back();
         cons_N = cons_N && Ns.back() >= 0;
@@ -1061,12 +1070,12 @@ z3::expr c2z3::loop_bound(Loop* loop) {
         std::set<PHINode*> local_phis = get_header_defs(u->get());
         all_phis.insert(local_phis.begin(), local_phis.end());
     }
-    for (auto phi : all_phis) {
-        initial_ty initial = header_phi_as_initial(phi);
-        // z3::expr to_solved = v2z3(phi, dim, false);
-        // errs() << to_solved.to_string() << "\n";
-        rec_s.add_initial_values(initial.first, initial.second);
-    }
+    // for (auto phi : all_phis) {
+    //     initial_ty initial = header_phi_as_initial(phi);
+    //     // z3::expr to_solved = v2z3(phi, dim, false);
+    //     // errs() << to_solved.to_string() << "\n";
+    //     rec_s.add_initial_values(initial.first, initial.second);
+    // }
     rec_s.solve();
     z3::expr_vector src(z3ctx);
     z3::expr_vector dst(z3ctx);
@@ -1182,4 +1191,13 @@ pc_type c2z3::path_condition_from_to_straight(BasicBlock* from, BasicBlock* to) 
     }
     res.first = res.first.simplify();
     return res;
+}
+
+
+void c2z3::get_loop_idx() {
+    LoopInfo& LI = LIs.at(main);
+    int i = 1;
+    for (Loop* loop : LI.getLoopsInPreorder()) {
+        loop2idx.insert_or_assign(loop, i++);
+    }
 }
