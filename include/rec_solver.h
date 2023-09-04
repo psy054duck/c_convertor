@@ -23,6 +23,8 @@ class rec_solver {
         // initial_ty initial_values;
         z3::expr_vector initial_values_k;
         z3::expr_vector initial_values_v;
+        std::vector<z3::expr> conds;
+        std::vector<rec_ty> exprs;
     public:
         rec_solver(rec_ty& rec_eqs, z3::expr var, z3::context& z3ctx);
         rec_solver(z3::context& z3ctx): z3ctx(z3ctx), ind_var(z3ctx.int_const("n0")), initial_values_k(z3ctx), initial_values_v(z3ctx) {}
@@ -35,5 +37,8 @@ class rec_solver {
         void apply_initial_values();
         void print_recs();
         void rec2file();
+        void _parse_expr(z3::expr k, z3::expr e);
+        std::vector<z3::expr> parse_cond(z3::expr);
+        bool is_ite_free(z3::expr e);
 };
 #endif

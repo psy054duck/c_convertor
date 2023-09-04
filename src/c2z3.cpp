@@ -815,6 +815,7 @@ validation_type c2z3::check_assert(Use* a, int out_idx) {
         initial_ty initials = loop2initial(loop);
         rec_s.set_eqs(recs);
         rec_s.add_initial_values(initials.first, initials.second);
+        rec_s.rec2file();
         z3::expr_vector ns(z3ctx);
         z3::expr_vector Ns(z3ctx);
         ns.push_back(z3ctx.int_const("n0"));

@@ -14,45 +14,19 @@ extern int __VERIFIER_nondet_int(void);
 extern void assert(bool);
 #define __VERIFIER_assert(x) assert(x)
 
-int main() {
-    int a, b, p, q, r, s;
-    int x, y;
-    x = __VERIFIER_nondet_int();
-    y = __VERIFIER_nondet_int();
-    // assume_abort_if_not(x >= 1);
-    // assume_abort_if_not(y >= 1);
-    if (x < 1 || y < 1) return 0;
+int main(void) {
+  int x = 0;
+  int i = 0;
 
-    a = x;
-    b = y;
-    p = 1;
-    q = 0;
-    r = 0;
-    s = 1;
-
-    while (1) {
-        // __VERIFIER_assert(1 == p * s - r * q);
-        // __VERIFIER_assert(a == y * r + x * p);
-        // __VERIFIER_assert(b == x * q + y * s);
-
-        if (!(a != b))
-            break;
-
-        if (a > b) {
-            a = a - b;
-            p = p - q;
-            r = r - s;
-        } else {
-            b = b - a;
-            q = q - p;
-            s = s - r;
-        }
+  while (x < 100000000) {
+    if (x < 10000000) {
+      x++;
+    } else {
+      x += 2;
     }
-    
-    // __VERIFIER_assert(a - b == 0);    
-    // __VERIFIER_assert(p*x + r*y - a == 0);
-    __VERIFIER_assert(q*r - p*s + 1 == 0);
-    // __VERIFIER_assert(q*x + s*y - b == 0);
-    return 0;
+    i++;
+  }
+
+  __VERIFIER_assert(x == i) ;
 }
 

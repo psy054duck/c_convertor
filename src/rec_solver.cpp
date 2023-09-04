@@ -204,7 +204,68 @@ void rec_solver::apply_initial_values() {
 }
 
 void rec_solver::rec2file() {
+    for (auto r : rec_eqs) {
+        std::cout << r.first.to_string() << " = " << r.second.to_string() << "\n";
+        for (auto e : parse_cond(r.second)) {
+            std::cout << e.to_string() << "\n";
+        }
+    }
+    // std::cout << "if (" << conds[0] << ") {\n";
+    // std::cout << "\t" << 
+    // for (int i = 1; i < conds.size(); i++) {
+    //     std::cout << "\t" << 
+    // }
+    // std::cout << "**********\n";
+}
 
+std::vector<z3::expr> rec_solver::parse_cond(z3::expr e) {
+    auto kind = e.decl().decl_kind();
+    auto args = e.args();
+    std::vector<z3::expr> res;
+    if (kind == Z3_OP_ITE) {
+        res.push_back(args[0]);
+        if (!is_ite_free(args[2])) {
+            for (auto e : parse_cond(args[2])) {
+                res.push_back(e);
+            }
+        }
+    }
+    return res;
+}
+// void rec_solver::parse_expr(z3::expr k, z3::expr e) {
+//     auto kind = e.decl().decl_kind();
+//     auto args = e.args();
+//     assert(kind == Z3_OP_ITE);
+//     if (kind == Z3_OP_ITE) {
+//         conds.push_back(args[0]);
+//         // parse_expr(args[1]);
+//         if (is_ite_free(args[1])) {
+//             exprs.push_back(args[1]);
+//         } else {
+//             parse_expr(args[1]);
+//         }
+//         if (is_ite_free(args[2])) {
+//             exprs.push_back(args[2]);
+//         } else {
+//             parse_expr(args[2]);
+//         }
+//     }
+// }
+
+bool rec_solver::is_ite_free(z3::expr e) {
+    auto kind = e.decl().decl_kind();
+    auto args = e.args();
+    if (e.is_numeral() || e.is_const()) {
+        return true;
+    }
+    if (kind == Z3_OP_ITE) {
+        return false;
+    }
+    bool res = true;
+    for (auto ep : args) {
+        res = res && is_ite_free(ep);
+    }
+    return res;
 }
 
 void rec_solver::print_recs() {
