@@ -806,6 +806,7 @@ validation_type c2z3::check_assert(Use* a, int out_idx) {
             if (inst_use) s.add(all2z3(inst_use));
         }
     }
+    std::vector<rec_ty> closed;
     for (Loop* loop : visited_loops) {
         rec_ty recs = loop2rec(loop);
         // for (auto r : recs) {
@@ -816,19 +817,15 @@ validation_type c2z3::check_assert(Use* a, int out_idx) {
         rec_s.set_eqs(recs);
         rec_s.add_initial_values(initials.first, initials.second);
         rec_s.solve();
-        // rec_s.rec2file();
-        // rec_s.file2z3();
         z3::expr bnd = loop_bound(loop);
         s.add(bnd);
         z3::expr_vector ns(z3ctx);
         z3::expr_vector Ns(z3ctx);
         ns.push_back(z3ctx.int_const("n0"));
         Ns.push_back(z3ctx.int_const(("N_" + std::to_string(loop2idx[loop]) + "_0").data()));
-        // for (auto e : expression2solve) {
-            // rec_s.expr_solve(e);
-            // rec_s.apply_initial_values();
         rec_ty res = rec_s.get_res();
         if (!res.empty()) {
+            closed.push_back(res);
             z3::expr ind_var = z3ctx.int_const("n0");
             for (auto r : res) {
                 z3::expr k = r.first;
@@ -837,19 +834,33 @@ validation_type c2z3::check_assert(Use* a, int out_idx) {
                 // errs() << (k.substitute(ns, Ns) == r.second.substitute(ns, Ns)).to_string() << "\n";
             }
         }
-            // rec_s.simple_solve();
-            // rec_s.apply_initial_values();
-            // res = rec_s.get_res();
-            // if (!res.empty()) {
-            //     z3::expr ind_var = z3ctx.int_const("n0");
-            //     for (auto r : res) {
-            //         z3::expr k = r.first;
-            //         s.add(z3::forall(ind_var, z3::implies(ind_var >= 0, r.first == r.second)));
-            //         s.add(k.substitute(ns, Ns) == r.second.substitute(ns, Ns));
-            //     }
-            // }
-        // }
     }
+    z3::expr_vector axioms = s.assertions();
+    z3::expr_vector new_axioms(z3ctx);
+    z3::expr n = z3ctx.int_const("n0");
+    z3::expr free_var = z3ctx.variable(0, z3ctx.int_sort());
+    z3::expr_vector src(z3ctx);
+    z3::expr_vector dst(z3ctx);
+    src.push_back(n);
+    dst.push_back(free_var);
+    for (auto e : axioms) {
+        z3::expr cur_e = e;
+        for (rec_ty c : closed) {
+            for (auto p : c) {
+                z3::func_decl f = p.first.decl();
+                z3::expr closed_form = p.second.substitute(src, dst);
+                // errs() << f.to_string() << " = " << closed_form.to_string() << "\n";
+                z3::func_decl_vector fs(z3ctx);
+                fs.push_back(f);
+                z3::expr_vector closed_forms(z3ctx);
+                closed_forms.push_back(closed_form);
+                cur_e = cur_e.substitute(fs, closed_forms);
+            }
+        }
+        new_axioms.push_back(cur_e);
+    }
+    s.reset();
+    s.add(new_axioms);
     std::string filename = "tmp/tmp" + std::to_string(out_idx) + ".smt2";
     std::ofstream out(filename);
     out << s.to_smt2().data() << "\n";

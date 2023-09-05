@@ -17,11 +17,11 @@ def main():
         print(subprocess.check_output(cmd).decode())
     except subprocess.TimeoutExpired:
         pass
-    for smt_filename in [os.path.join(tmp_path, i) for i in os.listdir(tmp_path) if i.endswith('.smt2')]:
-        formulas = z3.parse_smt2_file(smt_filename)
-        print('*'*50)
-        for f in formulas:
-            print(z3.simplify(f))
+    # for smt_filename in [os.path.join(tmp_path, i) for i in os.listdir(tmp_path) if i.endswith('.smt2')]:
+    #     formulas = z3.parse_smt2_file(smt_filename)
+    #     print('*'*50)
+    #     for f in formulas:
+    #         print(z3.simplify(f))
 
 
 if __name__ == '__main__':

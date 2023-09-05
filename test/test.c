@@ -44,6 +44,6 @@ int main()
     z++;
   }
 
-  __VERIFIER_assert(z==2*n + 1);
+  __VERIFIER_assert(z==2*n);
   return 0;
 }
