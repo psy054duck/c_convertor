@@ -20,6 +20,7 @@
 #include "llvm/Analysis/CGSCCPassManager.h"
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/Analysis/RegionInfo.h"
+#include "llvm/Analysis/MemorySSA.h"
 #include "llvm/Passes/PassBuilder.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
 
@@ -110,6 +111,7 @@ class c2z3 {
         std::map<Function*, LoopInfo&> LIs;
         std::map<Function*, DominatorTree> DTs;
         std::map<Function*, PostDominatorTree> PDTs;
+        std::map<Function*, MemorySSA&> MSSAs;
         bool verbose = false;
         z3::context z3ctx;
         PassBuilder PB;

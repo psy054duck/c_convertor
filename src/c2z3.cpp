@@ -39,6 +39,8 @@ c2z3::c2z3(std::unique_ptr<Module> &mod): m(std::move(mod)), rec_s(z3ctx), expre
     MPM.addPass(createModuleToFunctionPassAdaptor(LoopSimplifyPass()));
     MPM.addPass(createModuleToFunctionPassAdaptor(InstructionNamerPass()));
     MPM.addPass(createModuleToFunctionPassAdaptor(AggressiveInstCombinePass()));
+    // MPM.addPass(createModuleToFunctionPassAdaptor(MemorySSAWrapperPass()));
+
     MPM.run(*m, MAM);
 
 
@@ -50,12 +52,15 @@ c2z3::c2z3(std::unique_ptr<Module> &mod): m(std::move(mod)), rec_s(z3ctx), expre
     for (auto F = m->begin(); F != m->end(); F++) {
         if (!F->isDeclaration()) {
             LoopInfo& LI = fam.getResult<LoopAnalysis>(*F);
+            MemorySSA& MSSA = fam.getResult<MemorySSAAnalysis>(*F).getMSSA();
             DominatorTree DT = DominatorTree(*F);
             PostDominatorTree PDT = PostDominatorTree(*F);
             // LIs[&*F] = LI;
             LIs.emplace(&*F, LI);
             DTs.emplace(&*F, DominatorTree(*F));
             PDTs.emplace(&*F, PostDominatorTree(*F));
+            MSSAs.emplace(&*F, MSSA);
+            // MSSAs.insert_or_assign(&*F, MSSA);
             if (F->getName() == "main") {
                 main = &*F;
             }
