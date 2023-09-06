@@ -13,37 +13,14 @@ extern unsigned int __VERIFIER_nondet_uint(void);
 extern int __VERIFIER_nondet_int(void);
 extern void assert(bool);
 #define __VERIFIER_assert(x) assert(x)
+#define S 1000
 
-
-int main()
-{
-  unsigned int n = __VERIFIER_nondet_uint();
-  unsigned int x=n, y=0, z;
-  while(x>0)
-  {
-    x--;
-    y++;
+int main() {
+  int a[S] = {};
+  for (int i = 0; i < S; i++) {
+    a[i] = i;
   }
-
-  z = y;
-  while(z>0)
-  {
-    x++;
-    z--;
+  for (int i = 0; i < S; i++) {
+    assert(a[i] == i);
   }
-
-  while(y>0)
-  {
-    y--;
-    z++;
-  }
-
-  while(x>0)
-  {
-    x--;
-    z++;
-  }
-
-  __VERIFIER_assert(z==2*n);
-  return 0;
 }

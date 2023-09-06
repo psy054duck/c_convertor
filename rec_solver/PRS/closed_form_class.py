@@ -1,6 +1,8 @@
 import z3
 import re
 import sympy as sp
+from functools import reduce
+
 sim = z3.Then('ctx-simplify', 'unit-subsume-simplify')
 class ClosedForm:
     def __init__(self, res, variables, initial_symbols, n):
@@ -82,6 +84,43 @@ class ClosedForm:
         return ret
 
     def _expr_to_z3(self, expr):
+        e = self.__expr_to_z3(expr)
+        # res = self._remove_real(e)
+        # print(res)
+        return e
+        # if isinstance(expr, int): return z3.IntVal(expr)
+        # print(type(expr))
+
+    def _remove_real(self, expr):
+        try:
+            args = expr.children()
+        except:
+            pass
+        if z3.is_to_real(expr):
+            solver = z3.Solver()
+            without_to_real = args[0]
+            solver.add(z3.Not(z3.ToInt(expr) == without_to_real))
+            res = solver.check()
+            if res == z3.unsat:
+                # print(solver)
+                return self._remove_real(without_to_real)
+        if z3.is_const(expr):
+            return expr
+        elif z3.is_add(expr):
+            return sum([self._remove_real(a) for a in args])
+        elif z3.is_sub(expr):
+            assert(len(args) == 2)
+            return self._remove_real(args[0]) - self._remove_real(args[1])
+        elif z3.is_mul(expr):
+            return reduce(lambda x, y: x*y, [self._remove_real(a) for a in args])
+        elif z3.is_div(expr):
+            assert(len(args) == 2)
+            return self._remove_real(args[0]) / self._remove_real(args[1])
+        else:
+            raise Exception()
+
+
+    def __expr_to_z3(self, expr):
         if isinstance(expr, int): return z3.IntVal(expr)
         exec('n = z3.Int("n")')
         for var in self.variables:

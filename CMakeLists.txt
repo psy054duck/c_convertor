@@ -10,8 +10,9 @@ find_package(Z3 REQUIRED CONFIG HINTS /opt/homebrew/Cellar/z3)
 # 
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
+message(STATUS "Found Z3 ${Z3_VERSION_STRING}")
 message(STATUS "Using Z3.cmake in: ${Z3_DIR}")
-# message(STATUS "Using Z3.cmake in: ${Z3_CXX_INCLUDE_DIRS}")
+message(STATUS "Using z3++.h in: ${Z3_CXX_INCLUDE_DIRS}")
 # 
 # # Set your project compile flags.
 # # E.g. if using the C++ header files

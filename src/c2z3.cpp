@@ -324,32 +324,6 @@ z3::expr_vector c2z3::inst2z3(Instruction* inst) {
     z3::func_decl f = get_z3_function(inst, dim);
     z3::expr_vector args = get_args(dim, false, true, false);
     bool solved = false;
-    // if (loop) solved = true;
-    // if (loop) {
-    //     std::set<PHINode*> phis = get_header_defs(inst);
-    //     z3::expr combination = express_v_as_header_phis(inst);
-    //     z3::expr_vector subs_k(z3ctx);
-    //     z3::expr_vector subs_v(z3ctx);
-    //     for (auto p : phis) {
-    //         rec_ty rec = header_phi_as_rec(p);
-    //         // rec_ty recs = loop2rec(loop);
-    //         initial_ty initial = header_phi_as_initial(p);
-    //         // rec_s.set_ind_var(z3ctx.int_const("n0"));
-    //         rec_s.set_eqs(rec);
-    //         rec_s.add_initial_values(initial.first, initial.second);
-    //         rec_s.simple_solve();
-    //         rec_s.apply_initial_values();
-    //         closed_form_ty sol = rec_s.get_res();
-    //         if (!sol.empty()) solved = true;
-    //         for (auto r : sol) {
-    //             subs_k.push_back(r.first);
-    //             subs_v.push_back(r.second);
-    //         }
-    //     }
-    //     args = get_args(dim, false, false, false);
-    //     res.push_back(f(args) == combination.substitute(subs_k, subs_v));
-    //     args = get_args(dim, false, true, false);
-    // }
     int opcode = inst->getOpcode();
     if (solved) {
         // pass
@@ -460,6 +434,19 @@ z3::expr_vector c2z3::inst2z3(Instruction* inst) {
                 res.push_back(z3::implies(cond && local_cond, f(args) == z3_op));
             }
         }
+    } else if (auto CI = dyn_cast_or_null<AllocaInst>(inst)) {
+        Value* array_size = CI->getArraySize();
+        array_info.insert_or_assign(inst, v2z3(array_size, dim, false));
+    } else if (auto CI = dyn_cast_or_null<LoadInst>(inst)) {
+        Value* pointer = CI->getPointerOperand();
+        GetElementPtrInst* arr_ptr = dyn_cast_or_null<GetElementPtrInst>(pointer);
+        assert(arr_ptr);
+        Value* arr = arr_ptr->getPointerOperand();
+        assert(isa<AllocaInst>(arr));
+        errs() << inst->getName() << "\n";
+        errs() << arr->getName() << "\n";
+    } else if (auto CI = dyn_cast_or_null<SExtInst>(inst)) {
+        res.push_back(f(args) == use2z3(&CI->getOperandUse(0)));
     } else {
         throw UnimplementedOperationException(opcode);
     }
@@ -774,7 +761,7 @@ validation_type c2z3::check_assert(Use* a, int out_idx) {
     visited_inst.clear();
     z3::solver s(z3ctx);
 
-    as_loop_expression(a);
+    // as_loop_expression(a);
     // for (auto e : expression2solve) {
     //     errs() << e.to_string() << "\n";
     // }
