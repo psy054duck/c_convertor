@@ -355,7 +355,7 @@ z3::expr_vector c2z3::inst2z3(Instruction* inst) {
             throw UnimplementedOperationException(opcode);
         }
     } else if (opcode == Instruction::ICmp) {
-        auto CI = dyn_cast<ICmpInst>(inst);
+        auto CI = dyn_cast_or_null<ICmpInst>(inst);
         auto pred = CI->getPredicate();
         Use& op0 = inst->getOperandUse(0);
         Use& op1 = inst->getOperandUse(1);
@@ -388,7 +388,7 @@ z3::expr_vector c2z3::inst2z3(Instruction* inst) {
         if (called_name.endswith("uint")) {
             res.push_back(f(args) >= 0);
         }
-    } else if (auto CI = dyn_cast<PHINode>(inst)) {
+    } else if (auto CI = dyn_cast_or_null<PHINode>(inst)) {
         for (int i = 0; i < CI->getNumIncomingValues(); i++) {
             BasicBlock* cur_bb = inst->getParent();
             BasicBlock* in_bb = CI->getIncomingBlock(i);
@@ -802,6 +802,8 @@ z3::expr_vector c2z3::path2z3(path_ty p) {
     z3::expr_vector res(z3ctx);
     for (BasicBlock* bb : p) {
         for (Instruction& inst : *bb) {
+            if (bb->getTerminator() == &inst) continue;
+            errs() << inst.getName() << "\n";
             z3::expr_vector local_exprs = inst2z3(&inst);
             combine_vec(res, local_exprs);
         }
