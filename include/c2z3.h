@@ -55,7 +55,7 @@ class c2z3 {
         use_vector getAllAssertions();
         validation_type check_assert_backward(Use* a, int out_idx);
         validation_type check_assert(Use* a, int out_idx);
-        z3::expr_vector inst2z3(Instruction* inst);
+        z3::expr_vector inst2z3(Instruction* inst, BasicBlock* prev_bb);
         z3::expr_vector all2z3(Instruction* inst);
         z3::expr use2z3(Use* u);
         z3::expr v2z3(Value* v, int dim, int plus);
@@ -63,6 +63,7 @@ class c2z3 {
         std::set<Use*> get_bb_conditions(BasicBlock* bb);
         z3::expr path_condition_header2bb(BasicBlock* bb);
         z3::expr simple_path_condition_from_to(BasicBlock* from, BasicBlock* to);
+        z3::expr path_condition_one_stride(BasicBlock* from, BasicBlock* To);
 
         pc_type loop_condition(Loop* loop);
 
@@ -100,6 +101,7 @@ class c2z3 {
         rec_ty loop2rec(Loop* loop);
         initial_ty loop2initial(Loop* loop);
         z3::expr loop_bound(Loop* loop);
+        closed_form_ty solve_loop(Loop* loop);
         
         z3::expr phi2ite_header(PHINode* phi);
 

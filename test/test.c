@@ -15,19 +15,22 @@ extern void assert(bool);
 #define __VERIFIER_assert(x) assert(x)
 #define S 1000
 
-int main() {
-  int x = 0;
-  int y = 0;
-  int z = 0;
-  if (x >= 0) {
-    x++;
-    y++;
-  } else {
-    x--;
-    z++;
-  }
-  // for (int i = 0; i < S; i++) {
-  //   x++;
-  // }
-  assert(x == 1);
+int main()
+{
+	int x=0,y=50000,z=0;
+	x=0;
+	while(x<1000000){
+		if(x<50000)
+			x++;
+		else{
+			x++;
+			y++;
+		}
+	}
+	while(y>z){
+		y--;
+		x--;
+	}
+	__VERIFIER_assert(x==z + 1);
+	return 0;
 }

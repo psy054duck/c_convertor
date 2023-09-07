@@ -52,6 +52,7 @@ int main(int argc, char** argv) {
         // errs() << c_convertor.path_condition(bb).to_string() << "\n";
 
         validation_type check_res = c_convertor.check_assert(a, i);
+        // validation_type check_res = c_convertor.check_assert_backward(a, i);
         errs() << get_validation_type_name(check_res) << "\n";
         i++;
         // errs() << c_convertor.use2z3(a).to_string() << "\n";
