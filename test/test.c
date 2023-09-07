@@ -17,20 +17,13 @@ extern void assert(bool);
 
 int main()
 {
-	int x=0,y=50000,z=0;
-	x=0;
-	while(x<1000000){
-		if(x<50000)
-			x++;
-		else{
-			x++;
-			y++;
-		}
-	}
-	while(y>z){
-		y--;
-		x--;
-	}
-	__VERIFIER_assert(x==z + 1);
+  int N = __VERIFIER_nondet_uint();
+  int a[N][N];
+  for (int i = 0; i < S; i++) {
+    a[i][i] = i;
+  }
+  for (int i = 0; i < S; i++) {
+    assert(a[i][i] == i);
+  }
 	return 0;
 }

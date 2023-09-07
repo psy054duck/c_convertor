@@ -136,7 +136,7 @@ class c2z3 {
         rec_solver rec_s;
         z3::expr_vector expression2solve;
         std::map<Loop*, int> loop2idx;
-        std::map<Value*, z3::expr> array_info;
+        std::map<Value*, z3::expr_vector> array_info;
 };
 
 #endif

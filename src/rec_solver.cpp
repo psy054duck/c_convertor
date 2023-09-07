@@ -229,6 +229,8 @@ std::string rec_solver::z3_infix(z3::expr e) {
     if (kind == Z3_OP_ADD) {
         assert(args.size() == 2);
         return args_infix[0] + " + " + args_infix[1];
+    } else if (kind == Z3_OP_MOD) {
+        return args_infix[0] + " % " + args_infix[1];
     } else if (kind == Z3_OP_SUB) {
         assert(args.size() == 2);
         return args_infix[0] + " - " + args_infix[1];

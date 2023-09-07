@@ -450,8 +450,12 @@ z3::expr_vector c2z3::inst2z3(Instruction* inst, BasicBlock* prev_bb=nullptr) {
             }
         }
     } else if (auto CI = dyn_cast_or_null<AllocaInst>(inst)) {
-        Value* array_size = CI->getArraySize();
-        array_info.insert_or_assign(inst, v2z3(array_size, dim, false));
+        Type* ty = CI->getAllocatedType();
+        ArrayType* arr_ty = dyn_cast_or_null<ArrayType>(ty);
+        errs() << arr_ty->getNumElements() << "\n";
+        errs() << arr_ty->getElementType()->isArrayTy() << "\n";
+        arr_ty->getElementType()->print(errs());
+        errs() << "\n";
     } else if (auto CI = dyn_cast_or_null<LoadInst>(inst)) {
         MemorySSA& MSSA = MSSAs.at(main);
         MemoryUseOrDef* mud = MSSA.getMemoryAccess(inst);
@@ -802,15 +806,14 @@ validation_type c2z3::check_assert(Use* a, int out_idx) {
     auto CI = dyn_cast_or_null<Instruction>(user);
     std::vector<path_ty> paths = get_paths_from_to(&main->getEntryBlock(), CI->getParent());
     validation_type res = correct;
-    z3::solver s(z3ctx);
-    s.add(!use2z3(a));
     for (int i = 0; i < paths.size(); i++) {
         auto p = paths[i];
         // print_path(p);
-        s.push();
+        z3::solver s(z3ctx);
         s.add(path2z3(p));
         std::string filename = "tmp/tmp" + std::to_string(out_idx) + "_path_"+ std::to_string(i) + ".smt2";
         std::ofstream out(filename);
+        s.add(!use2z3(a));
         out << s.to_smt2().data() << "\n";
         out.close();
 
@@ -829,7 +832,6 @@ validation_type c2z3::check_assert(Use* a, int out_idx) {
             res = unknown;
             break;
         }
-        s.pop();
     }
     return res;
 }
@@ -879,13 +881,6 @@ z3::expr_vector c2z3::path2z3(path_ty p) {
     z3::expr free_var = z3ctx.variable(0, z3ctx.int_sort());
     std::vector<rec_ty> closed;
     for (Loop* loop : visited_loops) {
-        // rec_ty recs = loop2rec(loop);
-        // initial_ty initials = loop2initial(loop);
-        // auto rec_s = rec_solver(z3ctx);
-        // rec_s.set_eqs(recs);
-        // rec_s.add_initial_values(initials.first, initials.second);
-        // rec_s.solve();
-        // rec_ty res = rec_s.get_res();
         closed_form_ty res = solve_loop(loop);
         z3::expr bnd = loop_bound(loop);
         axioms.push_back(bnd);
@@ -1131,7 +1126,7 @@ z3::func_decl c2z3::get_z3_function(Use* u) {
 
 bool c2z3::is_bool(Value* v) {
     Type* ty = v->getType();
-    return ty->getIntegerBitWidth() == 1;
+    return ty->isIntegerTy() && ty->getIntegerBitWidth() == 1;
 }
 
 z3::func_decl c2z3::get_z3_function(Value* v, int dim) {
@@ -1310,7 +1305,7 @@ z3::expr c2z3::loop_bound(Loop* loop) {
         n1s.push_back(1 + z3ctx.int_const(idx.data()));
         idx = "N_" + std::to_string(loop2idx[loop]) + "_" + std::to_string(i);
         Ns.push_back(z3ctx.int_const(idx.data()));
-        premises = premises && ns.back() < Ns.back();
+        premises = premises && ns.back() < Ns.back() && ns.back() >= 0;
         cons_N = cons_N && Ns.back() >= 0;
     }
     piece = piece.substitute(n1s, ns);
