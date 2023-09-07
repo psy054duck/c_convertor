@@ -16,11 +16,18 @@ extern void assert(bool);
 #define S 1000
 
 int main() {
-  int a[S] = {};
-  for (int i = 0; i < S; i++) {
-    a[i] = i;
+  int x = 0;
+  int y = 0;
+  int z = 0;
+  if (x >= 0) {
+    x++;
+    y++;
+  } else {
+    x--;
+    z++;
   }
-  for (int i = 0; i < S; i++) {
-    assert(a[i] == i);
-  }
+  // for (int i = 0; i < S; i++) {
+  //   x++;
+  // }
+  assert(x == 1);
 }

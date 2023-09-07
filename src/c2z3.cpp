@@ -448,6 +448,11 @@ z3::expr_vector c2z3::inst2z3(Instruction* inst) {
         MemoryAccess* def_acc = mud->getDefiningAccess();
         MemorySSAWalker* walker = MSSA.getWalker();
         MemoryAccess* clobber = walker->getClobberingMemoryAccess(inst);
+        // if (auto m_phi = dyn_cast_or_null<MemoryPhi>(clobber)) {
+        //     m_phi->print(errs());
+        // } else if (auto m_def_use = dyn_cast_or_null<MemoryUseOrDef>(clobber)) {
+        //     m_def_use->print(errs());
+        // }
         // mud->getMemoryInst()->print(errs());
         // errs() << "\n";
         // mud->print(errs());
@@ -775,9 +780,41 @@ z3::expr c2z3::get_non_neg_args_cond(int dim) {
     return res;
 }
 
+void c2z3::print_path(path_ty p) {
+    for (auto bb : p) {
+        errs() << bb->getName() << " ";
+    }
+    errs() << "\n";
+}
+
 validation_type c2z3::check_assert(Use* a, int out_idx) {
+    User* user = a->getUser();
+    auto CI = dyn_cast_or_null<Instruction>(user);
+    std::vector<path_ty> paths = get_paths_from_to(&main->getEntryBlock(), CI->getParent());
+    for (path_ty p : paths) {
+        // print_path(p);
+        path2z3(p);
+    }
+    return unknown;
+}
+
+z3::expr_vector c2z3::path2z3(path_ty p) {
+    z3::expr_vector res(z3ctx);
+    for (BasicBlock* bb : p) {
+        for (Instruction& inst : *bb) {
+            z3::expr_vector local_exprs = inst2z3(&inst);
+            combine_vec(res, local_exprs);
+        }
+    }
+    for (z3::expr e : res) {
+        errs() << e.to_string() << "\n";
+    }
+}
+
+validation_type c2z3::check_assert_backward(Use* a, int out_idx) {
     visited_loops.clear();
     visited_inst.clear();
+
     z3::solver s(z3ctx);
 
     // as_loop_expression(a);
@@ -881,6 +918,26 @@ validation_type c2z3::check_assert(Use* a, int out_idx) {
     return res;
 }
 
+std::vector<path_ty> c2z3::get_paths_from_to(BasicBlock* from, BasicBlock* to) {
+    std::vector<path_ty> res;
+    LoopInfo& LI = LIs.at(main);
+    if (from == to) {
+        res.push_back({from});
+    }
+    for (auto bb = pred_begin(to); bb != pred_end(to); bb++) {
+        BasicBlock* cur_bb = *bb;
+        if (is_back_edge(cur_bb, to)) continue;
+        Loop *loop = LI.getLoopFor(cur_bb);
+        if (loop) cur_bb =loop->getHeader();
+        auto prev_paths = get_paths_from_to(from, cur_bb);
+        for (auto p : prev_paths) {
+            p.push_back(to);
+            res.push_back(p);
+        }
+    }
+    return res;
+}
+
 z3::func_decl c2z3::get_z3_function(Use* u) {
     Value* v = u->get();
     auto inst = dyn_cast_or_null<Instruction>(v);
@@ -907,7 +964,14 @@ z3::func_decl c2z3::get_z3_function(Value* v, int dim) {
     assert(inst);
     z3::sort_vector args_sorts(z3ctx);
     z3::sort ret_sort = is_bool(v) ? z3ctx.bool_sort() : z3ctx.int_sort();
-    for (int i = 0; i < dim; i++) {
+    int arity = 0;
+    if (auto load = dyn_cast_or_null<LoadInst>(v)) {
+        Value* ptr = load->getPointerOperand();
+        auto get_ptr_inst = dyn_cast_or_null<GetElementPtrInst>(ptr);
+        assert(get_ptr_inst);
+        // get_ptr_inst->get
+    }
+    for (int i = 0; i < dim + arity; i++) {
         args_sorts.push_back(z3ctx.int_sort());
     }
     const char* var_name = v->getName().data();

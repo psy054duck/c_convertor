@@ -38,6 +38,7 @@ using namespace llvm;
 typedef std::vector<Use*> use_vector;
 typedef std::vector<Value*> value_vector;
 typedef std::pair<z3::expr, std::set<Use*>> pc_type;
+typedef std::vector<BasicBlock*> path_ty;
 typedef enum {
     correct,
     wrong,
@@ -52,6 +53,7 @@ class c2z3 {
     public:
         c2z3(std::unique_ptr<Module> &mod);
         use_vector getAllAssertions();
+        validation_type check_assert_backward(Use* a, int out_idx);
         validation_type check_assert(Use* a, int out_idx);
         z3::expr_vector inst2z3(Instruction* inst);
         z3::expr_vector all2z3(Instruction* inst);
@@ -81,6 +83,8 @@ class c2z3 {
         z3::expr_vector get_pure_args(int dim, bool c);
         z3::expr get_non_neg_args_cond(int dim);
 
+        z3::expr_vector path2z3(path_ty p);
+
         z3::expr loop_expression(Use* u);
 
         z3::expr as_loop_expression(Use* u);
@@ -104,6 +108,10 @@ class c2z3 {
         void test_loop_condition();
 
         void get_loop_idx();
+
+        std::vector<path_ty> get_paths_from_to(BasicBlock* from, BasicBlock* to);
+
+        void print_path(path_ty);
 
     private:
         std::unique_ptr<Module> m;
