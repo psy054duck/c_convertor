@@ -443,13 +443,27 @@ z3::expr_vector c2z3::inst2z3(Instruction* inst) {
         Value* array_size = CI->getArraySize();
         array_info.insert_or_assign(inst, v2z3(array_size, dim, false));
     } else if (auto CI = dyn_cast_or_null<LoadInst>(inst)) {
+        MemorySSA& MSSA = MSSAs.at(main);
+        MemoryUseOrDef* mud = MSSA.getMemoryAccess(inst);
+        MemoryAccess* def_acc = mud->getDefiningAccess();
+        MemorySSAWalker* walker = MSSA.getWalker();
+        MemoryAccess* clobber = walker->getClobberingMemoryAccess(inst);
+        // mud->getMemoryInst()->print(errs());
+        // errs() << "\n";
+        // mud->print(errs());
+        // errs() << "\n";
+        // def_acc->print(errs());
+        // errs() << "\n";
+        // for (auto def = def_acc->defs_begin(); def != def_acc->defs_end(); def++) {
+        //     def->get
+        // }
         Value* pointer = CI->getPointerOperand();
         GetElementPtrInst* arr_ptr = dyn_cast_or_null<GetElementPtrInst>(pointer);
         assert(arr_ptr);
         Value* arr = arr_ptr->getPointerOperand();
         assert(isa<AllocaInst>(arr));
-        errs() << inst->getName() << "\n";
-        errs() << arr->getName() << "\n";
+        // errs() << inst->getName() << "\n";
+        // errs() << arr->getName() << "\n";
     } else if (auto CI = dyn_cast_or_null<SExtInst>(inst)) {
         res.push_back(f(args) == use2z3(&CI->getOperandUse(0)));
     } else {
