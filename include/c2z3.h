@@ -39,6 +39,7 @@ typedef std::vector<Use*> use_vector;
 typedef std::vector<Value*> value_vector;
 typedef std::pair<z3::expr, std::set<Use*>> pc_type;
 typedef std::vector<BasicBlock*> path_ty;
+typedef std::pair<Value*, std::vector<Use*>> array_access_ty;
 typedef enum {
     correct,
     wrong,
@@ -81,7 +82,10 @@ class c2z3 {
         z3::func_decl get_z3_function(Value* v, int dim);
         z3::func_decl get_z3_function(Use* u);
         z3::expr_vector get_args(int dim, bool c, bool plus, bool prefix, Loop* loop=nullptr);
+        z3::expr_vector get_arr_args(int arity);
         z3::expr_vector get_pure_args(int dim, bool c);
+        z3::expr_vector arr_access2z3(const std::vector<Use*>& args);
+        z3::expr pairwise_eq(z3::expr_vector e1, z3::expr_vector e2);
         z3::expr get_non_neg_args_cond(int dim);
 
         z3::expr_vector path2z3(path_ty p);
@@ -114,6 +118,9 @@ class c2z3 {
         std::vector<path_ty> get_paths_from_to(BasicBlock* from, BasicBlock* to);
 
         void print_path(path_ty);
+        // Value* get_array_from_load_store(Value* v);
+        array_access_ty get_array_access_from_load_store(Value* v);
+        array_access_ty get_array_access_from_gep(GetElementPtrInst* gep);
 
     private:
         std::unique_ptr<Module> m;

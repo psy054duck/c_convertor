@@ -18,12 +18,14 @@ extern void assert(bool);
 int main()
 {
   int N = __VERIFIER_nondet_uint();
-  int a[N][N];
+  // int N = S;
+  int a[N];
   for (int i = 0; i < S; i++) {
-    a[i][i] = i;
+    a[i] = i;
   }
-  for (int i = 0; i < S; i++) {
-    assert(a[i][i] == i);
-  }
+  // for (int i = 0; i < S; i++) {
+  //   assert(a[i] == i);
+  // }
+  assert(a[0] == 0);
 	return 0;
 }

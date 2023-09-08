@@ -223,6 +223,8 @@ z3::expr c2z3::_express_v_as_header_phis(Value* v, Loop* inner_loop) {
         } else {
             throw UnimplementedOperationException(opcode);
         }
+    } else if (auto CI = dyn_cast_or_null<SExtInst>(inst)) {
+
     } else {
         throw UnimplementedOperationException(opcode);
     }
@@ -450,41 +452,47 @@ z3::expr_vector c2z3::inst2z3(Instruction* inst, BasicBlock* prev_bb=nullptr) {
             }
         }
     } else if (auto CI = dyn_cast_or_null<AllocaInst>(inst)) {
+        Value* sz = CI->getArraySize();
         Type* ty = CI->getAllocatedType();
-        ArrayType* arr_ty = dyn_cast_or_null<ArrayType>(ty);
-        errs() << arr_ty->getNumElements() << "\n";
-        errs() << arr_ty->getElementType()->isArrayTy() << "\n";
-        arr_ty->getElementType()->print(errs());
-        errs() << "\n";
+        int num_e = 1;
+        if (auto arr_ty = dyn_cast_or_null<ArrayType>(ty))
+            num_e = arr_ty->getNumElements();
+        z3::expr_vector arr_dim_info(z3ctx);
+        arr_dim_info.push_back(v2z3(sz, dim, false) * num_e);
+        array_info.insert_or_assign(inst, arr_dim_info);
     } else if (auto CI = dyn_cast_or_null<LoadInst>(inst)) {
-        MemorySSA& MSSA = MSSAs.at(main);
-        MemoryUseOrDef* mud = MSSA.getMemoryAccess(inst);
-        MemoryAccess* def_acc = mud->getDefiningAccess();
-        MemorySSAWalker* walker = MSSA.getWalker();
-        MemoryAccess* clobber = walker->getClobberingMemoryAccess(inst);
-        // if (auto m_phi = dyn_cast_or_null<MemoryPhi>(clobber)) {
-        //     m_phi->print(errs());
-        // } else if (auto m_def_use = dyn_cast_or_null<MemoryUseOrDef>(clobber)) {
-        //     m_def_use->print(errs());
-        // }
-        // mud->getMemoryInst()->print(errs());
-        // errs() << "\n";
-        // mud->print(errs());
-        // errs() << "\n";
-        // def_acc->print(errs());
-        // errs() << "\n";
-        // for (auto def = def_acc->defs_begin(); def != def_acc->defs_end(); def++) {
-        //     def->get
-        // }
-        Value* pointer = CI->getPointerOperand();
-        GetElementPtrInst* arr_ptr = dyn_cast_or_null<GetElementPtrInst>(pointer);
-        assert(arr_ptr);
-        Value* arr = arr_ptr->getPointerOperand();
-        assert(isa<AllocaInst>(arr));
-        // errs() << inst->getName() << "\n";
-        // errs() << arr->getName() << "\n";
+        array_access_ty access = get_array_access_from_load_store(CI);
+        int arity = access.second.size();
+        
+        
+    } else if (auto CI = dyn_cast_or_null<StoreInst>(inst)) {
+        array_access_ty access = get_array_access_from_load_store(CI);
+        int arity = access.second.size();
+        z3::expr_vector arr_args = get_arr_args(arity);
+        z3::expr_vector access_args_z3 = arr_access2z3(access.second);
+        z3::expr premise = pairwise_eq(arr_args, access_args_z3);
+        z3::expr_vector all_args = get_arr_args(arity);
+        z3::expr_vector all_args_frame = get_arr_args(arity);
+        z3::expr_vector args_frame = get_args(dim, false, false, false);
+        combine_vec(all_args, args);
+        combine_vec(all_args_frame, args_frame);
+        Use* u = &CI->getOperandUse(0);
+        z3::expr e = f(all_args) == ite(premise, use2z3(u), f(all_args_frame));
+        res.push_back(e);
+        // errs() << array_info.at(access.first).to_string() << "\n";
+        // Value* pointer = CI->getPointerOperand();
+        // auto arr_ptr = dyn_cast_or_null<GetElementPtrInst>(pointer);
+        // assert(arr_ptr);
+        // Value* value = CI->getValueOperand();
+        // auto arr = arr_ptr->getPointerOperand();
+        // assert(isa<AllocaInst>(arr));
+
     } else if (auto CI = dyn_cast_or_null<SExtInst>(inst)) {
         res.push_back(f(args) == use2z3(&CI->getOperandUse(0)));
+    } else if (auto CI = dyn_cast_or_null<ZExtInst>(inst)) {
+        res.push_back(f(args) == use2z3(&CI->getOperandUse(0)));
+    } else if (auto CI = dyn_cast_or_null<GetElementPtrInst>(inst)) {
+
     } else {
         throw UnimplementedOperationException(opcode);
     }
@@ -507,6 +515,32 @@ z3::expr_vector c2z3::inst2z3(Instruction* inst, BasicBlock* prev_bb=nullptr) {
         forall_res.push_back(e);
     }
     return forall_res;
+}
+
+z3::expr c2z3::pairwise_eq(z3::expr_vector e1, z3::expr_vector e2) {
+    z3::expr res = z3ctx.bool_val(true);
+    assert(e1.size() == e2.size());
+    for (int i = 0; i < e1.size(); i++) {
+        res = res && e1[i] == e2[i];
+    }
+    return res.simplify();
+}
+
+z3::expr_vector c2z3::arr_access2z3(const std::vector<Use*>& args) {
+    z3::expr_vector res(z3ctx);
+    for (Use* u : args) {
+        res.push_back(use2z3(u));
+    }
+    return res;
+}
+
+z3::expr_vector c2z3::get_arr_args(int arity) {
+    z3::expr_vector args(z3ctx);
+    for (int i = 0; i < arity; i++) {
+        std::string name = "a_" + std::to_string(i);
+        args.push_back(z3ctx.int_const(name.data()));
+    }
+    return args;
 }
 
 z3::expr c2z3::v2z3(Value* v, int dim, int plus) {
@@ -1135,19 +1169,45 @@ z3::func_decl c2z3::get_z3_function(Value* v, int dim) {
     z3::sort_vector args_sorts(z3ctx);
     z3::sort ret_sort = is_bool(v) ? z3ctx.bool_sort() : z3ctx.int_sort();
     int arity = 0;
-    if (auto load = dyn_cast_or_null<LoadInst>(v)) {
-        Value* ptr = load->getPointerOperand();
-        auto get_ptr_inst = dyn_cast_or_null<GetElementPtrInst>(ptr);
-        assert(get_ptr_inst);
-        // get_ptr_inst->get
+    const char* var_name = v->getName().data();
+    if (auto store = dyn_cast_or_null<StoreInst>(v)) {
+        array_access_ty access = get_array_access_from_load_store(v);
+        arity = array_info.at(access.first).size();
+        var_name = access.first->getName().data();
     }
     for (int i = 0; i < dim + arity; i++) {
         args_sorts.push_back(z3ctx.int_sort());
     }
-    const char* var_name = v->getName().data();
     return z3ctx.function(var_name, args_sorts, ret_sort);
 }
 
+array_access_ty c2z3::get_array_access_from_load_store(Value* v) {
+    Value* ptr = nullptr;
+    assert(isa<LoadInst>(v) || isa<StoreInst>(v));
+    if (auto CI = dyn_cast_or_null<LoadInst>(v)) {
+        ptr = CI->getPointerOperand();
+    } else if (auto CI = dyn_cast_or_null<StoreInst>(v)) {
+        ptr = CI->getPointerOperand();
+    }
+    auto arr_ptr = dyn_cast_or_null<GetElementPtrInst>(ptr);
+    array_access_ty arr_access_args = get_array_access_from_gep(arr_ptr);
+    return arr_access_args;
+    // errs() << arr_access_args.first->getName() << "\n";
+    // for (Use* u : arr_access_args.second) {
+    //     errs() << u->get()->getName() << "\n";
+    // }
+}
+
+array_access_ty c2z3::get_array_access_from_gep(GetElementPtrInst* gep) {
+    Value* arr_ptr = gep->getPointerOperand();
+    assert(isa<AllocaInst>(arr_ptr));
+    std::vector<Use*> access_args;
+    for (auto idx = gep->idx_begin(); idx != gep->idx_end(); idx++) {
+        // Value* idx_v = idx->get();
+        access_args.push_back(idx);
+    }
+    return {arr_ptr, access_args};
+}
 
 z3::expr_vector c2z3::get_args(int dim, bool c, bool plus, bool prefix, Loop* loop) {
     z3::expr_vector args(z3ctx);
