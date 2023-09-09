@@ -20,12 +20,13 @@ int main()
   int N = __VERIFIER_nondet_uint();
   // int N = S;
   int a[N];
-  for (int i = 0; i < S; i++) {
+  int i = 0;
+  for (; i < S; i++) {
     a[i] = i;
   }
   // for (int i = 0; i < S; i++) {
   //   assert(a[i] == i);
   // }
-  assert(a[0] == 0);
+  assert(a[i] == i);
 	return 0;
 }

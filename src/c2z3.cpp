@@ -224,7 +224,9 @@ z3::expr c2z3::_express_v_as_header_phis(Value* v, Loop* inner_loop) {
             throw UnimplementedOperationException(opcode);
         }
     } else if (auto CI = dyn_cast_or_null<SExtInst>(inst)) {
-
+        return _express_v_as_header_phis(CI->getOperand(0), inner_loop);
+    } else if (auto CI = dyn_cast_or_null<ZExtInst>(inst)) {
+        return _express_v_as_header_phis(CI->getOperand(0), inner_loop);
     } else {
         throw UnimplementedOperationException(opcode);
     }
@@ -463,8 +465,16 @@ z3::expr_vector c2z3::inst2z3(Instruction* inst, BasicBlock* prev_bb=nullptr) {
     } else if (auto CI = dyn_cast_or_null<LoadInst>(inst)) {
         array_access_ty access = get_array_access_from_load_store(CI);
         int arity = access.second.size();
-        
-        
+        z3::expr_vector arr_args = get_arr_args(arity);
+        z3::expr_vector access_args_z3 = arr_access2z3(access.second);
+        // z3::expr premise = pairwise_eq(arr_args, access_args_z3);
+        z3::expr_vector all_args = get_arr_args(arity);
+        z3::expr_vector all_args_frame = get_arr_args(arity);
+        combine_vec(all_args, args);
+        all_args.push_back(z3ctx.int_const("N_1_0"));
+        z3::func_decl arr_f = get_z3_function(access.first, dim + 2);
+        z3::expr e = f(args) == arr_f(all_args);
+        res.push_back(e);
     } else if (auto CI = dyn_cast_or_null<StoreInst>(inst)) {
         array_access_ty access = get_array_access_from_load_store(CI);
         int arity = access.second.size();
@@ -984,7 +994,7 @@ closed_form_ty c2z3::solve_loop(Loop* loop) {
     dst.push_back(free_var);
     for (auto bb : loop->getBlocks()) {
         for (auto& inst : *bb) {
-            if (inst.hasName()) {
+            if (inst.hasName() && !isa<GetElementPtrInst>(inst) && !isa<StoreInst>(inst) && !isa<LoadInst>(inst)) {
                 z3::expr cur_e = express_v_as_header_phis(&inst);
                 for (auto p : rec_res) {
                     z3::func_decl f = p.first.decl();
