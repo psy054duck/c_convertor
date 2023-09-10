@@ -99,6 +99,7 @@ class c2z3 {
         std::set<PHINode*> get_header_defs(Value* v);
 
         bool is_bool(Value* v);
+        bool is_header_phi(Value* v, Loop* loop);
 
         rec_ty header_phi_as_rec(PHINode* phi);
         initial_ty header_phi_as_initial(PHINode* phi);
@@ -121,6 +122,15 @@ class c2z3 {
         // Value* get_array_from_load_store(Value* v);
         array_access_ty get_array_access_from_load_store(Value* v);
         array_access_ty get_array_access_from_gep(GetElementPtrInst* gep);
+        z3::expr_vector get_access_index(Value* v);
+        z3::expr assertion2z3(Use* a);
+        z3::expr_vector bb2z3(BasicBlock* bb, BasicBlock* prev_bb);
+        z3::expr_vector loop2z3(Loop* loop, BasicBlock* prev_bb);
+
+        int get_arity(Value* v);
+        
+        z3::expr_vector simplify_using_closed(z3::expr_vector vec);
+        z3::expr_vector simplify_using_closed(z3::expr e);
 
     private:
         std::unique_ptr<Module> m;
@@ -144,6 +154,8 @@ class c2z3 {
         z3::expr_vector expression2solve;
         std::map<Loop*, int> loop2idx;
         std::map<Value*, z3::expr_vector> array_info;
+
+        std::vector<closed_form_ty> cached_closed;
 };
 
 #endif
