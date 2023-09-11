@@ -23,6 +23,10 @@ int main()
   int i = 0;
   int x = 0;
   int x0 = x;
+  a[0] = 1;
+  a[0] = 2;
+  assert(a[0] == 1);
+  assert(a[0] == 2);
   // for (i = 0; i < S; i++) {
   //   if (i < 50)
   //     x++;
@@ -36,10 +40,10 @@ int main()
   //   x++;
   //   // assert(x == i + 1);
   // }
-  for (i = 0; i < S; i++) {
-    a[i] = i + 1;
-  }
-  assert(a[0] == 1);
+  // for (i = 0; i < S; i++) {
+  //   a[i] = i + 1;
+  // }
+  // assert(a[0] == 1);
   // assert(a[i - 1] == i - 1);
   // for (int i = 0; i < S; i++) {
   //   assert(a[i] == i );
