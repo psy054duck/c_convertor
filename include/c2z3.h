@@ -41,7 +41,6 @@ typedef std::pair<z3::expr, std::set<Use*>> pc_type;
 typedef std::vector<BasicBlock*> path_ty;
 typedef std::pair<Value*, std::vector<Use*>> array_access_ty;
 
-
 typedef enum {
     correct,
     wrong,
@@ -157,6 +156,9 @@ class c2z3 {
         std::map<Loop*, int> loop2idx;
         std::map<Value*, z3::expr_vector> array_info;
         std::vector<closed_form_ty> cached_closed;
+        std::map<Value*, int> array_index;
+        std::map<Value*, z3::func_decl> array_z3_func;
+        std::map<Value*, BasicBlock*> array_def_block;
 };
 
 #endif
