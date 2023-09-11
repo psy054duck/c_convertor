@@ -23,10 +23,12 @@ int main()
   int i = 0;
   int x = 0;
   int x0 = x;
-  for (i = 0; i < S; i++) {
+  a[0] = 2;
+  for (i = 1; i < S; i++) {
+    a[i] = i + 1;
     a[i] = i;
   }
-  assert(a[0] == 0);
+  assert(a[i] == i);
   // for (i = 0; i < 1; i++) {
   //   assert(a[i] == i);
   // }
