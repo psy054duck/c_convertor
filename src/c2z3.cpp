@@ -320,6 +320,9 @@ z3::expr_vector c2z3::inst2z3(Instruction* inst, BasicBlock* prev_bb=nullptr) {
     if (auto CI = dyn_cast_or_null<CallInst>(inst)) {
         return res;
     }
+    MemorySSA& MSSA = MSSAs.at(main);
+    MemorySSAWalker* walker = MSSA.getWalker();
+
     Type* tp = inst->getType();
     const char* var_name = inst->getName().data();
     bool is_bool = tp->isIntegerTy(1);
@@ -469,7 +472,6 @@ z3::expr_vector c2z3::inst2z3(Instruction* inst, BasicBlock* prev_bb=nullptr) {
     } else if (auto CI = dyn_cast_or_null<LoadInst>(inst)) {
         array_access_ty access = get_array_access_from_load_store(CI);
         int arity = access.second.size();
-        // arr_args = get_arr_args(arity);
         z3::expr e = f(args) == use2z3(&CI->getOperandUse(0));
         res.push_back(e);
     } else if (auto CI = dyn_cast_or_null<StoreInst>(inst)) {
@@ -1320,10 +1322,14 @@ z3::func_decl c2z3::get_z3_function(Value* v, int dim) {
     int arity = 0;
     const char* var_name = v->getName().data();
     array_access_ty access;
+    MemorySSA& MSSA = MSSAs.at(main);
     if (auto store = dyn_cast_or_null<StoreInst>(v)) {
+        MemoryAccess* m_access = MSSA.getMemoryAccess(inst);
+        auto m_access_def = dyn_cast_or_null<MemoryDef>(m_access);
+        assert(m_access_def);
         access = get_array_access_from_load_store(v);
         arity = array_info.at(access.first).size();
-        int idx = array_index[access.first];
+        int idx = m_access_def->getID();
         var_name = (std::string(access.first->getName().data()) + "_" + std::to_string(idx)).data();
     } else if (auto gep = dyn_cast_or_null<GetElementPtrInst>(v)) {
         access = get_array_access_from_gep(gep);
