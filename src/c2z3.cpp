@@ -491,7 +491,8 @@ z3::expr_vector c2z3::inst2z3(Instruction* inst, BasicBlock* prev_bb=nullptr) {
         res.push_back(e);
     } else if (auto CI = dyn_cast_or_null<StoreInst>(inst)) {
         if (encounter_mem_phi(inst)) {
-            mem_header_phi2z3(inst);
+            z3::expr_vector phi_axioms = mem_header_phi2z3(inst);
+            combine_vec(res, phi_axioms);
         }
         array_access_ty access = get_array_access_from_load_store(CI);
         int arity = access.second.size();
@@ -502,34 +503,38 @@ z3::expr_vector c2z3::inst2z3(Instruction* inst, BasicBlock* prev_bb=nullptr) {
         z3::expr_vector all_args = get_arr_args(arity);
         z3::expr_vector all_old_args = get_arr_args(arity);
 
-        z3::expr_vector all_args_frame = get_arr_args(arity);
-        z3::expr_vector args_frame = get_args(dim, false, false, false);
+        z3::func_decl old_f = get_array_function(inst);
+        int old_dim = old_f.arity() - arity;
+        z3::expr_vector old_args = get_args(old_dim, false, true, false);
+
+        // z3::expr_vector all_args_frame = get_arr_args(arity);
+        // z3::expr_vector args_frame = get_args(dim, false, true, false);
+        if (encounter_mem_phi(inst)) {
+            old_args = get_args(old_dim, false, false, false);
+        }
 
         combine_vec(all_args, args);
-        combine_vec(all_args_frame, args_frame);
+        combine_vec(all_old_args, old_args);
+        // combine_vec(all_args_frame, args_frame);
         Use* stored_v = &CI->getOperandUse(0);
 
         // f = old_array_z3_function.at(access.first);
-        z3::func_decl old_f = get_array_function(inst);
-        int old_dim = f.arity() - arity;
-        z3::expr_vector old_args = get_args(old_dim, false, false, false);
-        combine_vec(all_old_args, old_args);
 
         // array_index[access.first]++;
         // z3::func_decl new_f = get_z3_function(inst, dim);
         // array_z3_func.insert_or_assign(access.first, new_f);
-        if (dim > 0) {
-            z3::expr e = f(all_args) == ite(premise, use2z3(stored_v), old_f(all_args_frame));
-            z3::expr_vector all_args0 = all_args; // get_args(dim, false, true, false);
-            all_args0.pop_back();
-            all_args0.push_back(z3ctx.int_val(0));
-            z3::expr frame_e = f(all_args) == old_f(all_old_args);
+        // if (dim > 0) {
+        //     z3::expr e = f(all_args) == ite(premise, use2z3(stored_v), old_f(all_args_frame));
+        //     z3::expr_vector all_args0 = all_args; // get_args(dim, false, true, false);
+        //     all_args0.pop_back();
+        //     all_args0.push_back(z3ctx.int_val(0));
+        //     z3::expr frame_e = f(all_args) == old_f(all_old_args);
+        //     res.push_back(e);
+        //     res.push_back(frame_e);
+        // } else {
+            z3::expr e = f(all_args) == ite(premise, use2z3(stored_v), old_f(all_old_args));
             res.push_back(e);
-            res.push_back(frame_e);
-        } else {
-            z3::expr e = f(all_args) == ite(premise, use2z3(stored_v), old_f(all_args_frame));
-            res.push_back(e);
-        }
+        // }
         array_def_block.insert_or_assign(access.first, CI->getParent());
     } else if (auto CI = dyn_cast_or_null<SExtInst>(inst)) {
         res.push_back(f(args) == use2z3(&CI->getOperandUse(0)));
@@ -602,9 +607,14 @@ z3::expr_vector c2z3::mem_header_phi2z3(Value* v) {
     auto initial_access_def = dyn_cast_or_null<MemoryDef>(initial_access);
     auto latch_access_def = dyn_cast_or_null<MemoryDef>(latch_access);
     z3::expr_vector res_initial_part = initial_mem_phi2z3(initial_access, m_phi);
-    for (auto e : res_initial_part) {
-        errs() << e.to_string() << "\n";
-    }
+    z3::expr_vector res_latch_part = latch_mem_phi2z3(latch_access, m_phi);
+    // for (auto e : res_initial_part) {
+    //     errs() << e.to_string() << "\n";
+    // }
+    // for (auto e : res_latch_part) {
+    //     errs() << e.to_string() << "\n";
+    // }
+    return merge_vec(res_initial_part, res_latch_part);
 }
 
 int c2z3::get_dim(BasicBlock* bb) {
@@ -612,8 +622,33 @@ int c2z3::get_dim(BasicBlock* bb) {
     return LI.getLoopDepth(bb);
 }
 
-z3::expr_vector c2z3::latch_mem_phi2z3(MemoryAccess* initial_access, MemoryPhi* phi) {
+z3::expr_vector c2z3::latch_mem_phi2z3(MemoryAccess* latch_access, MemoryPhi* phi) {
     // TODO
+    z3::expr_vector res(z3ctx);
+    int old_id = 0;
+    auto access_def = dyn_cast_or_null<MemoryDef>(latch_access);
+    if (access_def) old_id = access_def->getID();
+    BasicBlock* bb = phi->getBlock();
+    int dim = get_dim(bb);
+    // BasicBlock* old_bb = latch_access->getBlock();
+    // int old_dim = get_dim(old_bb);
+    // Loop* loop = get_loop(old_bb);
+    for (auto info : array_info) {
+        Value* array = info.first;
+        int arity = info.second.size();
+        // z3::expr_vector args_N = get_args_N(loop);
+        z3::expr_vector args_n = get_args(dim, false, true, false);
+        // z3::expr_vector args_0 = get_args_0(dim);
+        z3::expr_vector arr_args = get_arr_args(arity);
+
+        z3::expr_vector all_args = merge_vec(arr_args, args_n);
+        // z3::expr_vector old_all_args = merge_vec(arr_args, args_N);
+
+        z3::func_decl f = get_array_function(array, phi->getID(), arity + dim);
+        z3::func_decl old_f = get_array_function(array, old_id, arity + dim);
+        res.push_back(f(all_args) == old_f(all_args));
+    }
+    return res;
 }
 
 z3::expr_vector c2z3::initial_mem_phi2z3(MemoryAccess* initial_access, MemoryPhi* phi) {

@@ -13,7 +13,7 @@ extern unsigned int __VERIFIER_nondet_uint(void);
 extern int __VERIFIER_nondet_int(void);
 extern void assert(bool);
 #define __VERIFIER_assert(x) assert(x)
-#define S 10
+#define S 1
 
 int main()
 {
@@ -23,15 +23,15 @@ int main()
   int i = 0;
   int x = 0;
   int x0 = x;
-  a[0] = 2;
   for (i = 0; i < S; i++) {
     a[i] = i + 1;
     a[i] = i;
   }
-  assert(a[i] == i);
-  // for (i = 0; i < 1; i++) {
-  //   assert(a[i] == i);
-  // }
+  // a[0] = 2;
+  // assert(a[0] == 2);
+  for (i = 0; i < S; i++) {
+    assert(a[i] == i + 1);
+  }
   // assert(a[i-1] == i-1);
   // assert(a[S - 1] == S );
   // for (i = 0; i < S; i++) {
