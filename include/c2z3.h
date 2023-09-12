@@ -70,6 +70,7 @@ class c2z3 {
         pc_type loop_condition(Loop* loop);
 
         int get_dim(Use* u);
+        int get_dim(BasicBlock* bb);
 
         pc_type path_condition(BasicBlock* bb);
         pc_type path_condition_from_to(BasicBlock* from, BasicBlock* to);
@@ -82,7 +83,11 @@ class c2z3 {
 
         z3::func_decl get_z3_function(Value* v, int dim);
         z3::func_decl get_z3_function(Use* u);
+        z3::func_decl get_array_function(Value* v);
+        z3::func_decl get_array_function(Value* v, int mem_id, int num_args);
         z3::expr_vector get_args(int dim, bool c, bool plus, bool prefix, Loop* loop=nullptr);
+        z3::expr_vector get_args_0(int dim);
+        z3::expr_vector get_args_N(Loop* loop);
         z3::expr_vector get_arr_args(int arity);
         z3::expr_vector get_pure_args(int dim, bool c);
         z3::expr_vector arr_access2z3(const std::vector<Use*>& args);
@@ -92,10 +97,15 @@ class c2z3 {
         z3::expr_vector path2z3(path_ty p);
 
         z3::expr loop_expression(Use* u);
+        z3::expr get_z3_N(Loop* loop);
 
         z3::expr as_loop_expression(Use* u);
         // z3::expr _as_loop_expression(Use* u, z3::expr acc);
         bool is_terminal(Value* v);
+
+        z3::sort_vector get_sorts(int num);
+
+        bool encounter_mem_phi(Value* v);
 
         std::set<PHINode*> get_header_defs(Value* v);
 
@@ -124,14 +134,23 @@ class c2z3 {
         array_access_ty get_array_access_from_load_store(Value* v);
         array_access_ty get_array_access_from_gep(GetElementPtrInst* gep);
         z3::expr_vector get_access_index(Value* v);
+
         z3::expr assertion2z3(Use* a);
         z3::expr_vector bb2z3(BasicBlock* bb, BasicBlock* prev_bb);
         z3::expr_vector loop2z3(Loop* loop, BasicBlock* prev_bb);
 
         int get_arity(Value* v);
-        
+
+        z3::expr_vector mem_header_phi2z3(Value* v);
+        z3::expr_vector initial_mem_phi2z3(MemoryAccess* access, MemoryPhi* phi);
+        z3::expr_vector latch_mem_phi2z3(MemoryAccess* access, MemoryPhi* phi);
+        MemoryAccess* get_mem_use(Value* v);
+        std::string get_array_name(Value* v, int mem_id);
+
         z3::expr_vector simplify_using_closed(z3::expr_vector vec);
         z3::expr_vector simplify_using_closed(z3::expr e);
+
+        Loop* get_loop(BasicBlock* bb);
 
     private:
         std::unique_ptr<Module> m;
