@@ -83,13 +83,17 @@ class c2z3 {
 
         z3::func_decl get_z3_function(Value* v, int dim);
         z3::func_decl get_z3_function(Use* u);
+
         z3::func_decl get_array_function(Value* v);
         z3::func_decl get_array_function(Value* v, int mem_id, int num_args);
+        z3::func_decl get_array_function(Value* v, MemoryAccess* access);
+
         z3::expr_vector get_args(int dim, bool c, bool plus, bool prefix, Loop* loop=nullptr);
         z3::expr_vector get_args_0(int dim);
         z3::expr_vector get_args_N(Loop* loop);
         z3::expr_vector get_arr_args(int arity);
         z3::expr_vector get_pure_args(int dim, bool c);
+
         z3::expr_vector arr_access2z3(const std::vector<Use*>& args);
         z3::expr pairwise_eq(z3::expr_vector e1, z3::expr_vector e2);
         z3::expr get_non_neg_args_cond(int dim);
@@ -158,6 +162,8 @@ class c2z3 {
         Loop* get_loop(BasicBlock* bb);
 
         rec_ty m_header_phi_as_rec(MemoryAccess* m_phi);
+        z3::expr m_as_header_phi(Value* v, MemoryAccess* access, Loop* loop);
+        bool is_m_header_phi(MemoryAccess* access, Loop* loop);
 
     private:
         std::unique_ptr<Module> m;
