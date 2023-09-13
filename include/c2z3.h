@@ -144,13 +144,20 @@ class c2z3 {
         z3::expr_vector mem_header_phi2z3(Value* v);
         z3::expr_vector initial_mem_phi2z3(MemoryAccess* access, MemoryPhi* phi);
         z3::expr_vector latch_mem_phi2z3(MemoryAccess* access, MemoryPhi* phi);
+
+
         MemoryAccess* get_mem_use(Value* v);
         std::string get_array_name(Value* v, int mem_id);
+
+        int get_m_phi_def_id(MemoryAccess* access);
+        BasicBlock* get_bb_from_m_access(MemoryAccess* access);
 
         z3::expr_vector simplify_using_closed(z3::expr_vector vec);
         z3::expr_vector simplify_using_closed(z3::expr e);
 
         Loop* get_loop(BasicBlock* bb);
+
+        rec_ty m_header_phi_as_rec(MemoryAccess* m_phi);
 
     private:
         std::unique_ptr<Module> m;

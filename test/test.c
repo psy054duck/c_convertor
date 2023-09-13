@@ -24,7 +24,7 @@ int main()
   int x = 0;
   int x0 = x;
   for (i = 0; i < S; i++) {
-    a[i] = i + 1;
+    // a[i] = i + 1;
     a[i] = i;
   }
   // a[0] = 2;
