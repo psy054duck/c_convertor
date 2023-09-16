@@ -832,9 +832,7 @@ z3::expr c2z3::use2z3(Use* u) {
         args.push_back(z3ctx.int_const(idx.data()));
     }
     // z3::func_decl f = z3ctx.function(var_name, params, ret_sort);
-    z3::expr_vector all_args(z3ctx);
-    combine_vec(all_args, arr_args);
-    combine_vec(all_args, args);
+    z3::expr_vector all_args = merge_vec(arr_args, args);
     return f(all_args);
 }
 
@@ -977,6 +975,11 @@ z3::expr c2z3::as_loop_expression(Use* u) {
         Use* op0 = &phi->getOperandUse(0);
         z3::expr e = as_loop_expression(op0);
         return e;
+    } else if (auto select = dyn_cast_or_null<SelectInst>(v)) {
+        z3::expr cond = as_loop_expression(&select->getOperandUse(0));
+        z3::expr op0 = as_loop_expression(&select->getOperandUse(1));
+        z3::expr op1 = as_loop_expression(&select->getOperandUse(2));
+        return z3::ite(cond, op0, op1);
     } else {
         throw UnimplementedOperationException(opcode);
     }
@@ -1102,6 +1105,7 @@ z3::expr_vector c2z3::simplify_using_closed(z3::expr e) {
 }
 
 z3::expr_vector c2z3::simplify_using_closed(z3::expr_vector vec) {
+    // return vec;
     z3::expr n = z3ctx.int_const("n0");
     z3::expr free_var = z3ctx.variable(0, z3ctx.int_sort());
     z3::expr_vector src(z3ctx);
@@ -1240,6 +1244,7 @@ z3::expr_vector c2z3::path2z3(path_ty p) {
     // dst.push_back(free_var);
     cached_closed = closed;
     z3::expr_vector new_axioms = simplify_using_closed(axioms);
+    // z3::expr_vector new_axioms = axioms;
     // for (auto e : axioms) {
     //     z3::expr cur_e = e;
     //     for (rec_ty c : closed) {
@@ -1314,12 +1319,9 @@ closed_form_ty c2z3::solve_loop(Loop* loop) {
     // if (!rec_res.empty()) {
     //     // closed.push_back(res);
     //     z3::expr ind_var = z3ctx.int_const("n0");
-    //     for (auto r : rec_res) {
-    //         z3::expr k = r.first;
-    //         res.push_back(z3::forall(ind_var, z3::implies(ind_var >= 0, k == r.second)));
-    //         res.push_back(k.substitute(ns, Ns) == r.second.substitute(ns, Ns));
-    //         // errs() << (k.substitute(ns, Ns) == r.second.substitute(ns, Ns)).to_string() << "\n";
-    //     }
+         // for (auto r : rec_res) {
+         //    errs() << r.first.to_string() << " = " << r.second.to_string() << "\n";
+         // }
     // }
     return new_rec_res;
 }
@@ -1740,7 +1742,8 @@ z3::expr c2z3::loop_bound(Loop* loop) {
     piece = piece.substitute(n1s, ns);
 
     for (Use* u : all_used) {
-        z3::expr loop_expr = loop_expression(u);
+        // z3::expr loop_expr = loop_expression(u);
+        z3::expr loop_expr = express_v_as_header_phis(u->get());
         z3::expr_vector src(z3ctx);
         z3::expr_vector dst(z3ctx);
         src.push_back(v2z3(u->get(), dim, false));
@@ -1770,6 +1773,7 @@ z3::expr c2z3::loop_bound(Loop* loop) {
     for (int i = 0; i < r.size(); i++) {
         final_res = final_res && r[i].as_expr();
     }
+    // errs() << final_res.simplify().to_string() << "\n";
     return final_res;
 }
 
