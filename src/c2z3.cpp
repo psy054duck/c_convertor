@@ -44,6 +44,7 @@ c2z3::c2z3(std::unique_ptr<Module> &mod): m(std::move(mod)), rec_s(z3ctx), expre
     raw_fd_ostream output_fd("tmp/tmp.ll", ec);
 
     ModulePassManager MPM;
+    MPM.addPass(ModuleInlinerPass());
     MPM.addPass(createModuleToFunctionPassAdaptor(PromotePass()));
     MPM.addPass(createModuleToFunctionPassAdaptor(LCSSAPass()));
     MPM.addPass(createModuleToFunctionPassAdaptor(SimplifyCFGPass()));

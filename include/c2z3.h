@@ -16,6 +16,8 @@
 #include "llvm/Transforms/Utils/InstructionNamer.h"
 #include "llvm/Transforms/Scalar/SimplifyCFG.h"
 #include "llvm/Transforms/AggressiveInstCombine/AggressiveInstCombine.h"
+#include "llvm/Transforms/IPO/ModuleInliner.h"
+#include "llvm/Transforms/Utils/Cloning.h"
 #include "llvm/Analysis/InstructionSimplify.h"
 #include "llvm/Analysis/CGSCCPassManager.h"
 #include "llvm/Analysis/LoopInfo.h"

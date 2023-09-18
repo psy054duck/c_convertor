@@ -15,19 +15,27 @@ extern void assert(bool);
 #define __VERIFIER_assert(x) assert(x)
 #define S 1
 
+int x=0;
+
+void eval(void) 
+{
+  while (1) {
+      x=0;
+      break;
+  }
+  return;
+}
+
+
 int main() {
-    int x,y;
-    x = 0;
-    y = 0;
-    while (1) {
-        if (x < 50) {
-            y++;
-        } else {
-            y--;
-        }
-        if (y < 0) break;
-        x++;
-    }
-    __VERIFIER_assert(x == 101);
-    return 0;
+
+  while(1)
+  {
+    eval();
+    __VERIFIER_assert(x==0);    
+  }
+
+  __VERIFIER_assert(x!=0);
+
+  return 0;
 }
