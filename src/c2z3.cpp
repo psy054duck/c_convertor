@@ -44,14 +44,17 @@ c2z3::c2z3(std::unique_ptr<Module> &mod): m(std::move(mod)), rec_s(z3ctx), expre
     raw_fd_ostream output_fd("tmp/tmp.ll", ec);
 
     ModulePassManager MPM;
-    MPM.addPass(ModuleInlinerPass());
+    // MPM.addPass(ModuleInlinerPass());
     MPM.addPass(createModuleToFunctionPassAdaptor(PromotePass()));
     MPM.addPass(createModuleToFunctionPassAdaptor(LCSSAPass()));
     MPM.addPass(createModuleToFunctionPassAdaptor(SimplifyCFGPass()));
+
+    MPM.addPass(createModuleToFunctionPassAdaptor(createFunctionToLoopPassAdaptor(LoopRotatePass())));
     MPM.addPass(createModuleToFunctionPassAdaptor(LoopSimplifyPass()));
+    MPM.addPass(createModuleToFunctionPassAdaptor(LoopFusePass()));
     MPM.addPass(createModuleToFunctionPassAdaptor(InstructionNamerPass()));
     MPM.addPass(createModuleToFunctionPassAdaptor(AggressiveInstCombinePass()));
-    MPM.addPass(createModuleToFunctionPassAdaptor(MemorySSAPrinterPass(output_fd)));
+    MPM.addPass(createModuleToFunctionPassAdaptor(MemorySSAPrinterPass(output_fd, true)));
     // MPM.addPass(createModuleToFunctionPassAdaptor(MemorySSAWrapperPass()));
 
     MPM.run(*m, MAM);
@@ -1582,7 +1585,7 @@ array_access_ty c2z3::get_array_access_from_gep(GetElementPtrInst* gep) {
     Value* arr_ptr = gep->getPointerOperand();
     assert(isa<AllocaInst>(arr_ptr));
     std::vector<Use*> access_args;
-    for (auto idx = gep->idx_begin(); idx != gep->idx_end(); idx++) {
+    for (auto idx = gep->idx_begin() + 1; idx != gep->idx_end(); idx++) {
         // Value* idx_v = idx->get();
         access_args.push_back(idx);
     }

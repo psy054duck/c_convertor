@@ -6,7 +6,7 @@ extern void abort(void);
 void assume_abort_if_not(int cond) {
   if(!cond) {abort();}
 }
-void __VERIFIER_assert(bool cond) { if(!(cond)) { ERROR: {reach_error();abort();} } }
+void __VERIFIER_assert(bool cond) __attribute__ ((const)) { if(!(cond)) { ERROR: {reach_error();abort();} } }
 extern int __VERIFIER_nondet_int(void);
 void *malloc(unsigned int size);
 
@@ -17,12 +17,22 @@ void *malloc(unsigned int size);
 	// int d[N];
 int main()
 {
-	int a[N];
-	for (int i = 0; i != N; i++) {
-		a[i] = i;
+	int a1[N];
+	int a2[N];
+	int a3[N];
+	int a4[N];
+	for (int i = 0; i < N; i++) {
+		a2[i] = a1[i];
 	}
-	for (int i = 0; i != N; i++) {
-		__VERIFIER_assert(a[i] == i);
+	for (int i = 0; i < N; i++) {
+		a3[i] = a1[i];
+	}
+	// for (int i = 0; i < N; i++) {
+	// 	a3[i] = a2[i];
+	// }
+
+	for (int i = 0; i < N; i++) {
+		__VERIFIER_assert(a2[i] == a3[i] + 1);
 	}
 	// N = __VERIFIER_nondet_int();
 	// if(N <= 0) return 1;
