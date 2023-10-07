@@ -60,7 +60,7 @@ c2z3::c2z3(std::unique_ptr<Module> &mod): m(std::move(mod)), rec_s(z3ctx), expre
     MPM.addPass(createModuleToFunctionPassAdaptor(DCEPass()));
     MPM.addPass(createModuleToFunctionPassAdaptor(InstructionNamerPass()));
     MPM.addPass(createModuleToFunctionPassAdaptor(AggressiveInstCombinePass()));
-    MPM.addPass(createModuleToFunctionPassAdaptor(MemorySSAPrinterPass(output_fd)));
+    MPM.addPass(createModuleToFunctionPassAdaptor(MemorySSAPrinterPass(output_fd, true)));
     // MPM.addPass(createModuleToFunctionPassAdaptor(MemorySSAWrapperPass()));
 
     MPM.run(*m, MAM);
@@ -251,6 +251,16 @@ z3::expr c2z3::_express_v_as_header_phis(Value* v, Loop* inner_loop) {
         return _express_v_as_header_phis(CI->getOperand(0), inner_loop);
     } else if (auto CI = dyn_cast_or_null<ZExtInst>(inst)) {
         return _express_v_as_header_phis(CI->getOperand(0), inner_loop);
+    } else if (auto CI = dyn_cast_or_null<LoadInst>(inst)) {
+        z3::func_decl arr_f = get_array_function(inst);
+        array_access_ty access = get_array_access_from_load_store(CI);
+        z3::expr_vector indices(z3ctx);
+        for (auto u : access.second) {
+            Value* v = u->get();
+            indices.push_back(_express_v_as_header_phis(v, inner_loop));
+        }
+        z3::expr_vector arr_n_args = merge_vec(indices, args);
+        return arr_f(arr_n_args);
     } else {
         throw UnimplementedOperationException(opcode);
     }
@@ -510,7 +520,6 @@ z3::expr_vector c2z3::inst2z3(Instruction* inst, BasicBlock* prev_bb=nullptr) {
     } else if (auto CI = dyn_cast_or_null<LoadInst>(inst)) {
         array_access_ty access = get_array_access_from_load_store(CI);
         MemoryAccess* m_access = get_mem_use(inst);
-        int m_id = get_m_phi_def_id(m_access);
         z3::func_decl arr_f = get_array_function(inst);
         z3::expr used_array = use2z3(&CI->getOperandUse(0));
         z3::expr_vector old_args = used_array.args();

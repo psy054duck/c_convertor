@@ -19,29 +19,32 @@ int main()
 {
 	int i;
 	int sum[1];
+	// int *a = malloc(sizeof(int)*N);
+	// int *b = malloc(sizeof(int)*N);
 	int a[N];
+	int b[N];
 
 	sum[0] = 0;
-	for(int i=0; i<N; i++)
+	for(i=0; i<N; i++)
 	{
-		if (i % 3 == 0) {
-			a[i] = 0;
-		} else if(i % 3 == 1) {
-			a[i] = 1;
-		} else {
-			a[i] = 2;
-		}
-		// a[i] = i%3;
+		a[i] = 1;
 	}
 
-	for(int i=0; i<N; i++)
+	for(i=0; i<N; i++)
 	{
-		if(i==0) {
-			sum[0] = 0;
-		} else {
-			sum[0] = sum[0] + a[i];
-		}
+		b[i] = 1;
 	}
+
+	for(i=0; i<N; i++)
+	{
+		sum[0] = sum[0] + a[i];
+	}
+
+	for(i=0; i<N; i++)
+	{
+		sum[0] = sum[0] + b[i];
+	}
+
 	__VERIFIER_assert(sum[0] <= 2*N);
 	return 1;
 }
