@@ -46,15 +46,21 @@ c2z3::c2z3(std::unique_ptr<Module> &mod): m(std::move(mod)), rec_s(z3ctx), expre
     ModulePassManager MPM;
     // MPM.addPass(ModuleInlinerPass());
     MPM.addPass(createModuleToFunctionPassAdaptor(PromotePass()));
+    MPM.addPass(createModuleToFunctionPassAdaptor(SROAPass(SROAOptions::ModifyCFG)));
     MPM.addPass(createModuleToFunctionPassAdaptor(LCSSAPass()));
     MPM.addPass(createModuleToFunctionPassAdaptor(SimplifyCFGPass()));
 
     MPM.addPass(createModuleToFunctionPassAdaptor(createFunctionToLoopPassAdaptor(LoopRotatePass())));
     MPM.addPass(createModuleToFunctionPassAdaptor(LoopSimplifyPass()));
     MPM.addPass(createModuleToFunctionPassAdaptor(LoopFusePass()));
+    MPM.addPass(createModuleToFunctionPassAdaptor(LoopSimplifyPass()));
+    MPM.addPass(createModuleToFunctionPassAdaptor(createFunctionToLoopPassAdaptor(IndVarSimplifyPass())));
+    MPM.addPass(createModuleToFunctionPassAdaptor(SCCPPass()));
+    MPM.addPass(createModuleToFunctionPassAdaptor(GVNPass()));
+    MPM.addPass(createModuleToFunctionPassAdaptor(DCEPass()));
     MPM.addPass(createModuleToFunctionPassAdaptor(InstructionNamerPass()));
     MPM.addPass(createModuleToFunctionPassAdaptor(AggressiveInstCombinePass()));
-    MPM.addPass(createModuleToFunctionPassAdaptor(MemorySSAPrinterPass(output_fd, true)));
+    MPM.addPass(createModuleToFunctionPassAdaptor(MemorySSAPrinterPass(output_fd)));
     // MPM.addPass(createModuleToFunctionPassAdaptor(MemorySSAWrapperPass()));
 
     MPM.run(*m, MAM);
@@ -156,6 +162,10 @@ initial_ty c2z3::header_phi_as_initial(PHINode* phi) {
 }
 
 z3::expr c2z3::express_v_as_header_phis(Value* v) {
+    if (auto CI = dyn_cast_or_null<ConstantInt>(v)) {
+        int svalue = CI->getSExtValue();
+        return is_bool(v) ? z3ctx.bool_val(svalue) : z3ctx.int_val(svalue);
+    }
     auto inst = dyn_cast_or_null<Instruction>(v);
     LoopInfo& LI = LIs.at(main);
     Loop* loop = LI.getLoopFor(inst->getParent());
@@ -539,6 +549,8 @@ z3::expr_vector c2z3::inst2z3(Instruction* inst, BasicBlock* prev_bb=nullptr) {
     } else if (auto CI = dyn_cast_or_null<SExtInst>(inst)) {
         res.push_back(f(args) == use2z3(&CI->getOperandUse(0)));
     } else if (auto CI = dyn_cast_or_null<ZExtInst>(inst)) {
+        res.push_back(f(args) == use2z3(&CI->getOperandUse(0)));
+    } else if (auto CI = dyn_cast_or_null<TruncInst>(inst)) {
         res.push_back(f(args) == use2z3(&CI->getOperandUse(0)));
     } else if (auto CI = dyn_cast_or_null<GetElementPtrInst>(inst)) {
 
