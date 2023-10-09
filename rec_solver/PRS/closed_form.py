@@ -14,6 +14,9 @@ from .validation import validate
 from .condition import PolyCondition
 # from .mathematica_manipulation import matrix2mathematica, matrix_power_mathematica, matrix_mul
 
+def matrix_mul(m1, m2):
+    return m1 * m2
+
 def jordan_cell_power(jc, n):
         N = jc.shape[0]
         l = jc[0, 0]

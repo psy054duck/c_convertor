@@ -57,7 +57,7 @@ c2z3::c2z3(std::unique_ptr<Module> &mod): m(std::move(mod)), rec_s(z3ctx), expre
     MPM.addPass(createModuleToFunctionPassAdaptor(createFunctionToLoopPassAdaptor(IndVarSimplifyPass())));
     MPM.addPass(createModuleToFunctionPassAdaptor(SCCPPass()));
     MPM.addPass(createModuleToFunctionPassAdaptor(GVNPass()));
-    MPM.addPass(createModuleToFunctionPassAdaptor(DCEPass()));
+    // MPM.addPass(createModuleToFunctionPassAdaptor(DCEPass()));
     MPM.addPass(createModuleToFunctionPassAdaptor(InstructionNamerPass()));
     MPM.addPass(createModuleToFunctionPassAdaptor(AggressiveInstCombinePass()));
     MPM.addPass(createModuleToFunctionPassAdaptor(MemorySSAPrinterPass(output_fd, true)));
@@ -1086,7 +1086,9 @@ z3::expr c2z3::assertion2z3(Use* a) {
     z3::expr_vector n_args = get_args(dim, false, false, false);
     auto inst = dyn_cast_or_null<Instruction>(v);
     LoopInfo& LI = LIs.at(main);
-    z3::expr_vector N_args = get_args(dim, true, false, false, LI.getLoopFor(inst->getParent()));
+    Loop* loop = nullptr;
+    if (inst) loop = LI.getLoopFor(inst->getParent());
+    z3::expr_vector N_args = get_args(dim, true, false, false, loop);
     z3::expr_vector n_range(z3ctx);
     // std::transform(n_args.begin(), n_args.end(), std::back_inserter(n_range), [](z3::expr e) { return e >= 0; });
     // z3::expr premise = std::accumulate(n_args.begin(), n_args.end(), z3ctx.int_val(1), [](const z3::expr& e1, const z3::expr& e2) { return e1 >= 0 && e2 >= 0; }).simplify();
@@ -1146,9 +1148,10 @@ z3::expr_vector c2z3::simplify_using_closed(z3::expr_vector vec) {
 }
 
 int c2z3::get_dim(Use* a) {
-    User* user = a->getUser();
-    auto inst = dyn_cast_or_null<Instruction>(user);
-    assert(inst);
+    // User* user = a->getUser();
+    Value* v = a->get();
+    auto inst = dyn_cast_or_null<Instruction>(v);
+    if (!inst) return 0;
     LoopInfo& LI = LIs.at(main);
     return LI.getLoopDepth(inst->getParent());
 }

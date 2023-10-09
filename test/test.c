@@ -6,7 +6,7 @@ extern void abort(void);
 void assume_abort_if_not(int cond) {
   if(!cond) {abort();}
 }
-void __VERIFIER_assert(bool cond) { if(!(cond)) { ERROR: {reach_error();abort();} } }
+void __VERIFIER_assert(bool cond) __attribute__((const)) { if(!(cond)) { ERROR: {reach_error();abort();} } }
 extern int __VERIFIER_nondet_int(void);
 void *malloc(unsigned int size);
 
@@ -15,36 +15,34 @@ void *malloc(unsigned int size);
 	// int b[N];
 	// int c[N];
 	// int d[N];
+struct _S
+{
+ int n;
+};
+typedef struct _S S;
 int main()
 {
-	int i;
-	int sum[1];
-	// int *a = malloc(sizeof(int)*N);
-	// int *b = malloc(sizeof(int)*N);
-	int a[N];
-	int b[N];
-
-	sum[0] = 0;
-	for(i=0; i<N; i++)
-	{
-		a[i] = 1;
-	}
-
-	for(i=0; i<N; i++)
-	{
-		b[i] = 1;
-	}
-
-	for(i=0; i<N; i++)
-	{
-		sum[0] = sum[0] + a[i];
-	}
-
-	for(i=0; i<N; i++)
-	{
-		sum[0] = sum[0] + b[i];
-	}
-
-	__VERIFIER_assert(sum[0] <= 2*N);
-	return 1;
+S a[N];
+S b[N];
+S c[N];
+ int i;
+ // for(i = 0; i < 1000000; i++)
+ // {
+ //  int v;
+ //         v = __VERIFIER_nondet_int();
+ //  a[i].n= v;
+ //  v = __VERIFIER_nondet_int();
+ //  b[i].n = v;
+ // }
+ for(int i = 0; i < N; i++)
+ {
+  c[i].n = a[i].n + b[i].n;
+  // c[i] = a[i] + b[i];
+ }
+ for(int i = 0; i < N; i++)
+ {
+  __VERIFIER_assert(c[i].n == a[i].n + b[i].n);
+  // __VERIFIER_assert(c[i] == a[i] + b[i]);
+ }
+ return 0;
 }
