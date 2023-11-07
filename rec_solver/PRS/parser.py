@@ -44,8 +44,6 @@ def p_program(p):
     for i, var in enumerate(variables[:len(p[1])]):
         x0[i] = p[1][var]
     x0[-1] = 1
-    print(variables)
-    print(x0)
     # p[0] = (cond, x0, A, [sp.Symbol(var) for var in variables], INDEX)
     p[0] = (cond, x0, maps, [sp.Symbol(var) for var in variables], INDEX)
 
@@ -286,7 +284,7 @@ def p_cmpop(p):
 def p_if_1(p):
     '''if : IF LPAREN condition RPAREN assignments'''
     true_transition = p[5]
-    false_transition = {v: sp.Symbol(v) for v in variables}
+    false_transition = {v: sp.Symbol(v) for v in variables + ['constant']}
     p[0] = ([p[3]], [true_transition, false_transition])
 
 def p_if_2(p):

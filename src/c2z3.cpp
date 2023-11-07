@@ -67,7 +67,7 @@ c2z3::c2z3(std::unique_ptr<Module> &mod): m(std::move(mod)), rec_s(z3ctx), expre
     // MPM.addPass(createModuleToFunctionPassAdaptor(DCEPass()));
     MPM.addPass(createModuleToFunctionPassAdaptor(InstructionNamerPass()));
     MPM.addPass(createModuleToFunctionPassAdaptor(AggressiveInstCombinePass()));
-    MPM.addPass(createModuleToFunctionPassAdaptor(MemorySSAPrinterPass(output_fd)));
+    MPM.addPass(createModuleToFunctionPassAdaptor(MemorySSAPrinterPass(output_fd, true)));
     // MPM.addPass(createModuleToFunctionPassAdaptor(MemorySSAWrapperPass()));
 
     MPM.run(*m, MAM);
@@ -1123,7 +1123,7 @@ z3::expr_vector c2z3::simplify_using_closed(z3::expr e) {
     z3::expr cur_e = e;
     for (rec_ty c : cached_closed) {
         for (auto p : c) {
-            if (p.first.is_var()) {
+            if (p.first.is_app() && p.first.args()[0] == n) {
                 z3::func_decl f = p.first.decl();
                 z3::expr closed_form = p.second.substitute(src, dst);
                 z3::func_decl_vector fs(z3ctx);
@@ -1272,7 +1272,6 @@ z3::expr_vector c2z3::path2z3(path_ty p) {
             // z3::expr ind_var = z3ctx.int_const("n0");
             for (auto r : res) {
                 z3::expr k = r.first;
-                errs() << k.to_string() << ' ' << r.second.to_string() << "\n";
                 axioms.push_back(z3::forall(n, z3::implies(n >= 0, k == r.second)));
                 axioms.push_back(k.substitute(ns, Ns) == r.second.substitute(ns, Ns));
             }
@@ -1340,7 +1339,7 @@ closed_form_ty c2z3::solve_loop(Loop* loop) {
                     continue;
                 }
                 for (auto p : rec_res) {
-                    if (p.first.is_var()) {
+                    if (p.first.is_var() && p.first.args()[0] == n) {
                         z3::func_decl f = p.first.decl();
                         z3::expr closed_form = p.second.substitute(src, dst);
                         z3::func_decl_vector fs(z3ctx);

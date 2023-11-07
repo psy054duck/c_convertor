@@ -82,7 +82,6 @@ def solve_sym_str(recurrence: str):
             f = sp.Function('f')
             rec = f(index + 1) - (trans[v].subs({v: f(index)} | closed_form))
             init_value = x0[variables.index(v)]
-            print(rec)
             closed = sp.rsolve(rec, f(index), {f(0): init_value})
             closed_form[v] = closed
         m = sp.zeros(len(variables), 1)

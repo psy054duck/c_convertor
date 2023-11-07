@@ -34,7 +34,10 @@ class Condition:
 
     @property
     def free_symbols(self):
-        return set(self.cond.free_symbols)
+        try:
+            return set(self.cond.free_symbols)
+        except:
+            return set()
 
 class TrueCondition(Condition):
     def evaluate(self, values):

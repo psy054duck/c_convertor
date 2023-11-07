@@ -292,7 +292,7 @@ initial_ty rec_solver::_rec2file(std::ofstream& out) {
         z3::expr new_lhs = lhs.substitute(src, dst);
         initial_src.push_back(new_lhs);
         initial_dst.push_back(rhs);
-        out << z3_infix(new_lhs) << " = " << z3_infix(new_lhs) << ";\n";
+        out << z3_infix(new_lhs) << " = " << z3_infix(rhs) << ";\n";
     }
 
     z3::expr first_cond = z3ctx.bool_val(true);
@@ -430,7 +430,7 @@ void rec_solver::_file2z3(const std::string& filename, initial_ty initial_back) 
         z3::expr k = args[0];
         z3::expr v = args[1];
         // std::cout << v.to_string() << "\n";
-        res.insert_or_assign(k.substitute(src, dst), v.substitute(initial_back.first, initial_back.second).substitute(src, dst));
+        res.insert_or_assign(k.substitute(src, dst), v.substitute(initial_back.first, initial_back.second).substitute(src, dst).simplify());
         // std::cout << e.to_string() << "\n";
     }
     // print_res();
