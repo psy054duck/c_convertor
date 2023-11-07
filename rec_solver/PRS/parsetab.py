@@ -6,9 +6,9 @@ _tabversion = '3.10'
 
 _lr_method = 'LALR'
 
-_lr_signature = 'leftPLUSMINUSleftTIMESAND ASSIGN COMMA DECRE ELSE EQ GE GT ID IF INCRE LBRACE LE LPAREN LT ME MINUS MOD NE NOT NUMBER OR PE PLUS RBRACE RPAREN SEMI TIMES TRUEprogram : initializations ifinitializations : initialization initializations\n                       | initialization : ID ASSIGN expression SEMIassignments : assignment assignments\n                   | LBRACE assignments RBRACE\n                   | assignment : ID ASSIGN expression SEMI\n                  | ID INCRE SEMI\n                  | ID PE NUMBER SEMI\n                  | ID ME NUMBER SEMI\n                  | ID DECRE SEMIcondition : expression cmpop expression\n                 | NOT LPAREN condition RPARENcondition : AND LPAREN condition_list RPARENcondition : TRUEcondition : OR LPAREN condition_list RPARENcondition_list : condition COMMA condition_listcondition_list : conditioncmpop : GT\n             | GE\n             | LT\n             | LE\n             | EQ\n             | NEif : IF LPAREN condition RPAREN assignments\n          | IF LPAREN condition RPAREN assignments ELSE assignments\n          | IF LPAREN condition RPAREN assignments ELSE ifexpression : expression PLUS factor\n                  | expression MINUS factor\n                  | factorfactor : factor TIMES unary_expression\n              | factor MOD unary_expression\n              | unary_expressionunary_expression : PLUS symbol_number\n                        | MINUS symbol_number\n                        | symbol_number\n                        | LPAREN expression RPARENsymbol_number : NUMBER\n                     | ID'
+_lr_signature = 'leftPLUSMINUSleftTIMESAND ASSIGN COMMA DECRE DIV ELSE EQ GE GT ID IF INCRE LBRACE LE LPAREN LT ME MINUS MOD NE NOT NUMBER OR PE PLUS RBRACE RPAREN SEMI TIMES TRUEprogram : initializations ifinitializations : initialization initializationsinitializations : initialization : ID ASSIGN expression SEMIassignments : assignment assignmentsassignments : LBRACE assignments RBRACEassignments : assignment : ID ASSIGN expression SEMIassignment : ID INCRE SEMIassignment : ID DECRE SEMIassignment : ID PE NUMBER SEMIassignment : ID ME NUMBER SEMIcondition : expression cmpop expressioncondition : NOT LPAREN condition RPARENcondition : AND LPAREN condition_list RPARENcondition : TRUEcondition : OR LPAREN condition_list RPARENcondition_list : condition COMMA condition_listcondition_list : conditioncmpop : GT\n             | GE\n             | LT\n             | LE\n             | EQ\n             | NEif : IF LPAREN condition RPAREN assignmentsif : IF LPAREN condition RPAREN assignments ELSE assignmentsif : IF LPAREN condition RPAREN assignments ELSE ifexpression : expression PLUS factor\n                  | expression MINUS factor\n                  | factorfactor : factor TIMES unary_expressionfactor : factor MOD unary_expressionfactor : unary_expressionfactor : factor DIV unary_expressionunary_expression : PLUS symbol_number\n                        | MINUS symbol_number\n                        | symbol_number\n                        | LPAREN expression RPARENsymbol_number : NUMBER\n                     | ID'
     
-_lr_action_items = {'IF':([0,2,3,7,25,58,],[-3,6,-3,-2,-4,6,]),'ID':([0,3,8,9,12,14,17,25,26,27,29,30,33,34,35,36,37,38,39,40,41,42,43,50,51,58,61,68,74,77,79,80,81,],[4,4,10,10,10,10,10,-4,10,10,10,10,52,10,-20,-21,-22,-23,-24,-25,10,10,10,52,52,52,10,10,-9,-12,-8,-10,-11,]),'$end':([1,5,33,49,50,58,59,70,71,72,74,77,79,80,81,],[0,-1,-7,-26,-7,-7,-5,-27,-28,-6,-9,-12,-8,-10,-11,]),'ASSIGN':([4,52,],[8,61,]),'LPAREN':([6,8,9,17,21,22,24,26,27,29,30,34,35,36,37,38,39,40,41,42,43,61,68,],[9,17,17,17,41,42,43,17,17,17,17,17,-20,-21,-22,-23,-24,-25,17,17,17,17,17,]),'PLUS':([8,9,10,11,13,15,16,17,18,20,26,27,28,29,30,31,32,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,53,61,68,73,],[12,12,-40,26,-31,-34,-37,12,-39,26,12,12,-35,12,12,-36,26,12,-20,-21,-22,-23,-24,-25,12,12,12,-29,-30,-32,-33,-38,26,12,12,26,]),'MINUS':([8,9,10,11,13,15,16,17,18,20,26,27,28,29,30,31,32,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,53,61,68,73,],[14,14,-40,27,-31,-34,-37,14,-39,27,14,14,-35,14,14,-36,27,14,-20,-21,-22,-23,-24,-25,14,14,14,-29,-30,-32,-33,-38,27,14,14,27,]),'NUMBER':([8,9,12,14,17,26,27,29,30,34,35,36,37,38,39,40,41,42,43,61,63,64,68,],[18,18,18,18,18,18,18,18,18,18,-20,-21,-22,-23,-24,-25,18,18,18,18,75,76,18,]),'NOT':([9,41,42,43,68,],[21,21,21,21,21,]),'AND':([9,41,42,43,68,],[22,22,22,22,22,]),'TRUE':([9,41,42,43,68,],[23,23,23,23,23,]),'OR':([9,41,42,43,68,],[24,24,24,24,24,]),'TIMES':([10,13,15,16,18,28,31,44,45,46,47,48,],[-40,29,-34,-37,-39,-35,-36,29,29,-32,-33,-38,]),'MOD':([10,13,15,16,18,28,31,44,45,46,47,48,],[-40,30,-34,-37,-39,-35,-36,30,30,-32,-33,-38,]),'SEMI':([10,11,13,15,16,18,28,31,44,45,46,47,48,62,65,73,75,76,],[-40,25,-31,-34,-37,-39,-35,-36,-29,-30,-32,-33,-38,74,77,79,80,81,]),'GT':([10,13,15,16,18,20,28,31,44,45,46,47,48,],[-40,-31,-34,-37,-39,35,-35,-36,-29,-30,-32,-33,-38,]),'GE':([10,13,15,16,18,20,28,31,44,45,46,47,48,],[-40,-31,-34,-37,-39,36,-35,-36,-29,-30,-32,-33,-38,]),'LT':([10,13,15,16,18,20,28,31,44,45,46,47,48,],[-40,-31,-34,-37,-39,37,-35,-36,-29,-30,-32,-33,-38,]),'LE':([10,13,15,16,18,20,28,31,44,45,46,47,48,],[-40,-31,-34,-37,-39,38,-35,-36,-29,-30,-32,-33,-38,]),'EQ':([10,13,15,16,18,20,28,31,44,45,46,47,48,],[-40,-31,-34,-37,-39,39,-35,-36,-29,-30,-32,-33,-38,]),'NE':([10,13,15,16,18,20,28,31,44,45,46,47,48,],[-40,-31,-34,-37,-39,40,-35,-36,-29,-30,-32,-33,-38,]),'RPAREN':([10,13,15,16,18,19,23,28,31,32,44,45,46,47,48,53,54,55,56,57,66,67,69,78,],[-40,-31,-34,-37,-39,33,-16,-35,-36,48,-29,-30,-32,-33,-38,-13,66,67,-19,69,-14,-15,-17,-18,]),'COMMA':([10,13,15,16,18,23,28,31,44,45,46,47,48,53,56,66,67,69,],[-40,-31,-34,-37,-39,-16,-35,-36,-29,-30,-32,-33,-38,-13,68,-14,-15,-17,]),'LBRACE':([33,50,51,58,74,77,79,80,81,],[51,51,51,51,-9,-12,-8,-10,-11,]),'ELSE':([33,49,50,59,72,74,77,79,80,81,],[-7,58,-7,-5,-6,-9,-12,-8,-10,-11,]),'RBRACE':([50,51,59,60,72,74,77,79,80,81,],[-7,-7,-5,72,-6,-9,-12,-8,-10,-11,]),'INCRE':([52,],[62,]),'PE':([52,],[63,]),'ME':([52,],[64,]),'DECRE':([52,],[65,]),}
+_lr_action_items = {'IF':([0,2,3,7,25,60,],[-3,6,-3,-2,-4,6,]),'ID':([0,3,8,9,12,14,17,25,26,27,29,30,31,34,35,36,37,38,39,40,41,42,43,44,52,53,60,63,70,76,77,81,82,83,],[4,4,10,10,10,10,10,-4,10,10,10,10,10,54,10,-20,-21,-22,-23,-24,-25,10,10,10,54,54,54,10,10,-9,-10,-8,-11,-12,]),'$end':([1,5,34,51,52,60,61,72,73,74,76,77,81,82,83,],[0,-1,-7,-26,-7,-7,-5,-27,-28,-6,-9,-10,-8,-11,-12,]),'ASSIGN':([4,54,],[8,63,]),'LPAREN':([6,8,9,17,21,22,24,26,27,29,30,31,35,36,37,38,39,40,41,42,43,44,63,70,],[9,17,17,17,42,43,44,17,17,17,17,17,17,-20,-21,-22,-23,-24,-25,17,17,17,17,17,]),'PLUS':([8,9,10,11,13,15,16,17,18,20,26,27,28,29,30,31,32,33,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,55,63,70,75,],[12,12,-41,26,-31,-34,-38,12,-40,26,12,12,-36,12,12,12,-37,26,12,-20,-21,-22,-23,-24,-25,12,12,12,-29,-30,-32,-33,-35,-39,26,12,12,26,]),'MINUS':([8,9,10,11,13,15,16,17,18,20,26,27,28,29,30,31,32,33,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,55,63,70,75,],[14,14,-41,27,-31,-34,-38,14,-40,27,14,14,-36,14,14,14,-37,27,14,-20,-21,-22,-23,-24,-25,14,14,14,-29,-30,-32,-33,-35,-39,27,14,14,27,]),'NUMBER':([8,9,12,14,17,26,27,29,30,31,35,36,37,38,39,40,41,42,43,44,63,66,67,70,],[18,18,18,18,18,18,18,18,18,18,18,-20,-21,-22,-23,-24,-25,18,18,18,18,78,79,18,]),'NOT':([9,42,43,44,70,],[21,21,21,21,21,]),'AND':([9,42,43,44,70,],[22,22,22,22,22,]),'TRUE':([9,42,43,44,70,],[23,23,23,23,23,]),'OR':([9,42,43,44,70,],[24,24,24,24,24,]),'TIMES':([10,13,15,16,18,28,32,45,46,47,48,49,50,],[-41,29,-34,-38,-40,-36,-37,29,29,-32,-33,-35,-39,]),'MOD':([10,13,15,16,18,28,32,45,46,47,48,49,50,],[-41,30,-34,-38,-40,-36,-37,30,30,-32,-33,-35,-39,]),'DIV':([10,13,15,16,18,28,32,45,46,47,48,49,50,],[-41,31,-34,-38,-40,-36,-37,31,31,-32,-33,-35,-39,]),'SEMI':([10,11,13,15,16,18,28,32,45,46,47,48,49,50,64,65,75,78,79,],[-41,25,-31,-34,-38,-40,-36,-37,-29,-30,-32,-33,-35,-39,76,77,81,82,83,]),'GT':([10,13,15,16,18,20,28,32,45,46,47,48,49,50,],[-41,-31,-34,-38,-40,36,-36,-37,-29,-30,-32,-33,-35,-39,]),'GE':([10,13,15,16,18,20,28,32,45,46,47,48,49,50,],[-41,-31,-34,-38,-40,37,-36,-37,-29,-30,-32,-33,-35,-39,]),'LT':([10,13,15,16,18,20,28,32,45,46,47,48,49,50,],[-41,-31,-34,-38,-40,38,-36,-37,-29,-30,-32,-33,-35,-39,]),'LE':([10,13,15,16,18,20,28,32,45,46,47,48,49,50,],[-41,-31,-34,-38,-40,39,-36,-37,-29,-30,-32,-33,-35,-39,]),'EQ':([10,13,15,16,18,20,28,32,45,46,47,48,49,50,],[-41,-31,-34,-38,-40,40,-36,-37,-29,-30,-32,-33,-35,-39,]),'NE':([10,13,15,16,18,20,28,32,45,46,47,48,49,50,],[-41,-31,-34,-38,-40,41,-36,-37,-29,-30,-32,-33,-35,-39,]),'RPAREN':([10,13,15,16,18,19,23,28,32,33,45,46,47,48,49,50,55,56,57,58,59,68,69,71,80,],[-41,-31,-34,-38,-40,34,-16,-36,-37,50,-29,-30,-32,-33,-35,-39,-13,68,69,-19,71,-14,-15,-17,-18,]),'COMMA':([10,13,15,16,18,23,28,32,45,46,47,48,49,50,55,58,68,69,71,],[-41,-31,-34,-38,-40,-16,-36,-37,-29,-30,-32,-33,-35,-39,-13,70,-14,-15,-17,]),'LBRACE':([34,52,53,60,76,77,81,82,83,],[53,53,53,53,-9,-10,-8,-11,-12,]),'ELSE':([34,51,52,61,74,76,77,81,82,83,],[-7,60,-7,-5,-6,-9,-10,-8,-11,-12,]),'RBRACE':([52,53,61,62,74,76,77,81,82,83,],[-7,-7,-5,74,-6,-9,-10,-8,-11,-12,]),'INCRE':([54,],[64,]),'DECRE':([54,],[65,]),'PE':([54,],[66,]),'ME':([54,],[67,]),}
 
 _lr_action = {}
 for _k, _v in _lr_action_items.items():
@@ -17,7 +17,7 @@ for _k, _v in _lr_action_items.items():
       _lr_action[_x][_k] = _y
 del _lr_action_items
 
-_lr_goto_items = {'program':([0,],[1,]),'initializations':([0,3,],[2,7,]),'initialization':([0,3,],[3,3,]),'if':([2,58,],[5,71,]),'expression':([8,9,17,34,41,42,43,61,68,],[11,20,32,53,20,20,20,73,20,]),'factor':([8,9,17,26,27,34,41,42,43,61,68,],[13,13,13,44,45,13,13,13,13,13,13,]),'unary_expression':([8,9,17,26,27,29,30,34,41,42,43,61,68,],[15,15,15,15,15,46,47,15,15,15,15,15,15,]),'symbol_number':([8,9,12,14,17,26,27,29,30,34,41,42,43,61,68,],[16,16,28,31,16,16,16,16,16,16,16,16,16,16,16,]),'condition':([9,41,42,43,68,],[19,54,56,56,56,]),'cmpop':([20,],[34,]),'assignments':([33,50,51,58,],[49,59,60,70,]),'assignment':([33,50,51,58,],[50,50,50,50,]),'condition_list':([42,43,68,],[55,57,78,]),}
+_lr_goto_items = {'program':([0,],[1,]),'initializations':([0,3,],[2,7,]),'initialization':([0,3,],[3,3,]),'if':([2,60,],[5,73,]),'expression':([8,9,17,35,42,43,44,63,70,],[11,20,33,55,20,20,20,75,20,]),'factor':([8,9,17,26,27,35,42,43,44,63,70,],[13,13,13,45,46,13,13,13,13,13,13,]),'unary_expression':([8,9,17,26,27,29,30,31,35,42,43,44,63,70,],[15,15,15,15,15,47,48,49,15,15,15,15,15,15,]),'symbol_number':([8,9,12,14,17,26,27,29,30,31,35,42,43,44,63,70,],[16,16,28,32,16,16,16,16,16,16,16,16,16,16,16,16,]),'condition':([9,42,43,44,70,],[19,56,58,58,58,]),'cmpop':([20,],[35,]),'assignments':([34,52,53,60,],[51,61,62,72,]),'assignment':([34,52,53,60,],[52,52,52,52,]),'condition_list':([43,44,70,],[57,59,80,]),}
 
 _lr_goto = {}
 for _k, _v in _lr_goto_items.items():
@@ -28,43 +28,44 @@ del _lr_goto_items
 _lr_productions = [
   ("S' -> program","S'",1,None,None,None),
   ('program -> initializations if','program',2,'p_program','parser.py',28),
-  ('initializations -> initialization initializations','initializations',2,'p_initializations','parser.py',37),
-  ('initializations -> <empty>','initializations',0,'p_initializations','parser.py',38),
-  ('initialization -> ID ASSIGN expression SEMI','initialization',4,'p_initialization_1','parser.py',53),
-  ('assignments -> assignment assignments','assignments',2,'p_assignments','parser.py',74),
-  ('assignments -> LBRACE assignments RBRACE','assignments',3,'p_assignments','parser.py',75),
-  ('assignments -> <empty>','assignments',0,'p_assignments','parser.py',76),
-  ('assignment -> ID ASSIGN expression SEMI','assignment',4,'p_assignment','parser.py',85),
-  ('assignment -> ID INCRE SEMI','assignment',3,'p_assignment','parser.py',86),
-  ('assignment -> ID PE NUMBER SEMI','assignment',4,'p_assignment','parser.py',87),
-  ('assignment -> ID ME NUMBER SEMI','assignment',4,'p_assignment','parser.py',88),
-  ('assignment -> ID DECRE SEMI','assignment',3,'p_assignment','parser.py',89),
-  ('condition -> expression cmpop expression','condition',3,'p_condition_1','parser.py',123),
-  ('condition -> NOT LPAREN condition RPAREN','condition',4,'p_condition_1','parser.py',124),
-  ('condition -> AND LPAREN condition_list RPAREN','condition',4,'p_condition_2','parser.py',150),
-  ('condition -> TRUE','condition',1,'p_condition_3','parser.py',157),
-  ('condition -> OR LPAREN condition_list RPAREN','condition',4,'p_condition_4','parser.py',161),
-  ('condition_list -> condition COMMA condition_list','condition_list',3,'p_condition_list_1','parser.py',172),
-  ('condition_list -> condition','condition_list',1,'p_condition_list_2','parser.py',176),
-  ('cmpop -> GT','cmpop',1,'p_cmpop','parser.py',180),
-  ('cmpop -> GE','cmpop',1,'p_cmpop','parser.py',181),
-  ('cmpop -> LT','cmpop',1,'p_cmpop','parser.py',182),
-  ('cmpop -> LE','cmpop',1,'p_cmpop','parser.py',183),
-  ('cmpop -> EQ','cmpop',1,'p_cmpop','parser.py',184),
-  ('cmpop -> NE','cmpop',1,'p_cmpop','parser.py',185),
-  ('if -> IF LPAREN condition RPAREN assignments','if',5,'p_if','parser.py',189),
-  ('if -> IF LPAREN condition RPAREN assignments ELSE assignments','if',7,'p_if','parser.py',190),
-  ('if -> IF LPAREN condition RPAREN assignments ELSE if','if',7,'p_if','parser.py',191),
-  ('expression -> expression PLUS factor','expression',3,'p_expression','parser.py',210),
-  ('expression -> expression MINUS factor','expression',3,'p_expression','parser.py',211),
-  ('expression -> factor','expression',1,'p_expression','parser.py',212),
-  ('factor -> factor TIMES unary_expression','factor',3,'p_factor','parser.py',222),
-  ('factor -> factor MOD unary_expression','factor',3,'p_factor','parser.py',223),
-  ('factor -> unary_expression','factor',1,'p_factor','parser.py',224),
-  ('unary_expression -> PLUS symbol_number','unary_expression',2,'p_unary_expression_1','parser.py',233),
-  ('unary_expression -> MINUS symbol_number','unary_expression',2,'p_unary_expression_1','parser.py',234),
-  ('unary_expression -> symbol_number','unary_expression',1,'p_unary_expression_1','parser.py',235),
-  ('unary_expression -> LPAREN expression RPAREN','unary_expression',3,'p_unary_expression_1','parser.py',236),
-  ('symbol_number -> NUMBER','symbol_number',1,'p_symbol_number','parser.py',259),
-  ('symbol_number -> ID','symbol_number',1,'p_symbol_number','parser.py',260),
+  ('initializations -> initialization initializations','initializations',2,'p_initializations1','parser.py',50),
+  ('initializations -> <empty>','initializations',0,'p_initializations2','parser.py',56),
+  ('initialization -> ID ASSIGN expression SEMI','initialization',4,'p_initialization_1','parser.py',66),
+  ('assignments -> assignment assignments','assignments',2,'p_assignments1','parser.py',98),
+  ('assignments -> LBRACE assignments RBRACE','assignments',3,'p_assignments2','parser.py',102),
+  ('assignments -> <empty>','assignments',0,'p_assignments3','parser.py',106),
+  ('assignment -> ID ASSIGN expression SEMI','assignment',4,'p_assignment1','parser.py',110),
+  ('assignment -> ID INCRE SEMI','assignment',3,'p_assignment2','parser.py',123),
+  ('assignment -> ID DECRE SEMI','assignment',3,'p_assignment3','parser.py',131),
+  ('assignment -> ID PE NUMBER SEMI','assignment',4,'p_assignment4','parser.py',139),
+  ('assignment -> ID ME NUMBER SEMI','assignment',4,'p_assignment5','parser.py',147),
+  ('condition -> expression cmpop expression','condition',3,'p_condition1','parser.py',196),
+  ('condition -> NOT LPAREN condition RPAREN','condition',4,'p_condition2','parser.py',219),
+  ('condition -> AND LPAREN condition_list RPAREN','condition',4,'p_condition3','parser.py',224),
+  ('condition -> TRUE','condition',1,'p_condition_4','parser.py',231),
+  ('condition -> OR LPAREN condition_list RPAREN','condition',4,'p_condition_5','parser.py',235),
+  ('condition_list -> condition COMMA condition_list','condition_list',3,'p_condition_list_1','parser.py',246),
+  ('condition_list -> condition','condition_list',1,'p_condition_list_2','parser.py',250),
+  ('cmpop -> GT','cmpop',1,'p_cmpop','parser.py',254),
+  ('cmpop -> GE','cmpop',1,'p_cmpop','parser.py',255),
+  ('cmpop -> LT','cmpop',1,'p_cmpop','parser.py',256),
+  ('cmpop -> LE','cmpop',1,'p_cmpop','parser.py',257),
+  ('cmpop -> EQ','cmpop',1,'p_cmpop','parser.py',258),
+  ('cmpop -> NE','cmpop',1,'p_cmpop','parser.py',259),
+  ('if -> IF LPAREN condition RPAREN assignments','if',5,'p_if_1','parser.py',283),
+  ('if -> IF LPAREN condition RPAREN assignments ELSE assignments','if',7,'p_if_2','parser.py',289),
+  ('if -> IF LPAREN condition RPAREN assignments ELSE if','if',7,'p_if_3','parser.py',295),
+  ('expression -> expression PLUS factor','expression',3,'p_expression','parser.py',302),
+  ('expression -> expression MINUS factor','expression',3,'p_expression','parser.py',303),
+  ('expression -> factor','expression',1,'p_expression','parser.py',304),
+  ('factor -> factor TIMES unary_expression','factor',3,'p_factor1','parser.py',325),
+  ('factor -> factor MOD unary_expression','factor',3,'p_factor2','parser.py',329),
+  ('factor -> unary_expression','factor',1,'p_factor3','parser.py',333),
+  ('factor -> factor DIV unary_expression','factor',3,'p_factor4','parser.py',337),
+  ('unary_expression -> PLUS symbol_number','unary_expression',2,'p_unary_expression_1','parser.py',342),
+  ('unary_expression -> MINUS symbol_number','unary_expression',2,'p_unary_expression_1','parser.py',343),
+  ('unary_expression -> symbol_number','unary_expression',1,'p_unary_expression_1','parser.py',344),
+  ('unary_expression -> LPAREN expression RPAREN','unary_expression',3,'p_unary_expression_1','parser.py',345),
+  ('symbol_number -> NUMBER','symbol_number',1,'p_symbol_number','parser.py',368),
+  ('symbol_number -> ID','symbol_number',1,'p_symbol_number','parser.py',369),
 ]

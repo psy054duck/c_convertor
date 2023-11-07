@@ -34,6 +34,13 @@ z3::expr_vector merge_vec(z3::expr_vector& v1, z3::expr_vector& v2) {
 
 c2z3::c2z3(std::unique_ptr<Module> &mod): m(std::move(mod)), rec_s(z3ctx), expression2solve(z3ctx) {
     // Register all the basic analyses with the managers.
+    for (auto F = m->begin(); F != m->end(); F++) {
+        if (!F->getName().starts_with("__VERIFIER") && F->getName() != "main") {
+            if (F->hasFnAttribute(Attribute::NoInline)) {
+                F->removeFnAttr(Attribute::NoInline);
+            }
+        }
+    }
     PB.registerModuleAnalyses(MAM);
     PB.registerCGSCCAnalyses(CGAM);
     PB.registerFunctionAnalyses(FAM);
@@ -44,29 +51,29 @@ c2z3::c2z3(std::unique_ptr<Module> &mod): m(std::move(mod)), rec_s(z3ctx), expre
     raw_fd_ostream output_fd("tmp/tmp.ll", ec);
 
     ModulePassManager MPM;
-    // MPM.addPass(ModuleInlinerPass());
+    MPM.addPass(ModuleInlinerPass());
     MPM.addPass(createModuleToFunctionPassAdaptor(PromotePass()));
     MPM.addPass(createModuleToFunctionPassAdaptor(SROAPass(SROAOptions::ModifyCFG)));
     MPM.addPass(createModuleToFunctionPassAdaptor(LCSSAPass()));
     MPM.addPass(createModuleToFunctionPassAdaptor(SimplifyCFGPass()));
 
-    MPM.addPass(createModuleToFunctionPassAdaptor(createFunctionToLoopPassAdaptor(LoopRotatePass())));
+    // MPM.addPass(createModuleToFunctionPassAdaptor(createFunctionToLoopPassAdaptor(LoopRotatePass())));
     MPM.addPass(createModuleToFunctionPassAdaptor(LoopSimplifyPass()));
     MPM.addPass(createModuleToFunctionPassAdaptor(LoopFusePass()));
     MPM.addPass(createModuleToFunctionPassAdaptor(LoopSimplifyPass()));
-    MPM.addPass(createModuleToFunctionPassAdaptor(createFunctionToLoopPassAdaptor(IndVarSimplifyPass())));
+    // MPM.addPass(createModuleToFunctionPassAdaptor(createFunctionToLoopPassAdaptor(IndVarSimplifyPass())));
     MPM.addPass(createModuleToFunctionPassAdaptor(SCCPPass()));
     MPM.addPass(createModuleToFunctionPassAdaptor(GVNPass()));
     // MPM.addPass(createModuleToFunctionPassAdaptor(DCEPass()));
     MPM.addPass(createModuleToFunctionPassAdaptor(InstructionNamerPass()));
     MPM.addPass(createModuleToFunctionPassAdaptor(AggressiveInstCombinePass()));
-    MPM.addPass(createModuleToFunctionPassAdaptor(MemorySSAPrinterPass(output_fd, true)));
+    MPM.addPass(createModuleToFunctionPassAdaptor(MemorySSAPrinterPass(output_fd)));
     // MPM.addPass(createModuleToFunctionPassAdaptor(MemorySSAWrapperPass()));
 
     MPM.run(*m, MAM);
 
 
-    // m->print(output_fd, NULL);
+    m->print(output_fd, NULL);
     output_fd.close();
     auto &fam = MAM.getResult<FunctionAnalysisManagerModuleProxy>(*m).getManager();
     for (auto F = m->begin(); F != m->end(); F++) {
@@ -1116,13 +1123,15 @@ z3::expr_vector c2z3::simplify_using_closed(z3::expr e) {
     z3::expr cur_e = e;
     for (rec_ty c : cached_closed) {
         for (auto p : c) {
-            z3::func_decl f = p.first.decl();
-            z3::expr closed_form = p.second.substitute(src, dst);
-            z3::func_decl_vector fs(z3ctx);
-            fs.push_back(f);
-            z3::expr_vector closed_forms(z3ctx);
-            closed_forms.push_back(closed_form);
-            cur_e = cur_e.substitute(fs, closed_forms);
+            if (p.first.is_var()) {
+                z3::func_decl f = p.first.decl();
+                z3::expr closed_form = p.second.substitute(src, dst);
+                z3::func_decl_vector fs(z3ctx);
+                fs.push_back(f);
+                z3::expr_vector closed_forms(z3ctx);
+                closed_forms.push_back(closed_form);
+                cur_e = cur_e.substitute(fs, closed_forms);
+            }
         }
     }
     res.push_back(cur_e);
@@ -1142,6 +1151,8 @@ z3::expr_vector c2z3::simplify_using_closed(z3::expr_vector vec) {
     z3::expr_vector res(z3ctx);
     for (auto e : vec) {
         z3::expr_vector cur_e = simplify_using_closed(e);
+        // errs() << "- " <<  e.to_string() << "\n";
+        // errs() << "- " <<  cur_e.to_string() << "\n";
         combine_vec(res, cur_e);
     }
     return res;
@@ -1261,6 +1272,7 @@ z3::expr_vector c2z3::path2z3(path_ty p) {
             // z3::expr ind_var = z3ctx.int_const("n0");
             for (auto r : res) {
                 z3::expr k = r.first;
+                errs() << k.to_string() << ' ' << r.second.to_string() << "\n";
                 axioms.push_back(z3::forall(n, z3::implies(n >= 0, k == r.second)));
                 axioms.push_back(k.substitute(ns, Ns) == r.second.substitute(ns, Ns));
             }
@@ -1328,13 +1340,15 @@ closed_form_ty c2z3::solve_loop(Loop* loop) {
                     continue;
                 }
                 for (auto p : rec_res) {
-                    z3::func_decl f = p.first.decl();
-                    z3::expr closed_form = p.second.substitute(src, dst);
-                    z3::func_decl_vector fs(z3ctx);
-                    fs.push_back(f);
-                    z3::expr_vector closed_forms(z3ctx);
-                    closed_forms.push_back(closed_form);
-                    cur_e = cur_e.substitute(fs, closed_forms);
+                    if (p.first.is_var()) {
+                        z3::func_decl f = p.first.decl();
+                        z3::expr closed_form = p.second.substitute(src, dst);
+                        z3::func_decl_vector fs(z3ctx);
+                        fs.push_back(f);
+                        z3::expr_vector closed_forms(z3ctx);
+                        closed_forms.push_back(closed_form);
+                        cur_e = cur_e.substitute(fs, closed_forms);
+                    }
                 }
                 if (bb != loop->getHeader() || !isa<PHINode>(inst))
                     cur_e = cur_e.substitute(src, dst_1);
@@ -1756,6 +1770,7 @@ z3::expr c2z3::loop_bound(Loop* loop) {
     z3::expr_vector ns(z3ctx);
     z3::expr_vector n1s(z3ctx);
     z3::expr_vector Ns(z3ctx);
+    z3::expr_vector N1s(z3ctx);
     z3::expr premises = z3ctx.bool_val(true);
     z3::expr cons_N = z3ctx.bool_val(true);
     for (int i = 0; i < dim; i++) {
@@ -1764,6 +1779,7 @@ z3::expr c2z3::loop_bound(Loop* loop) {
         n1s.push_back(1 + z3ctx.int_const(idx.data()));
         idx = "N_" + std::to_string(loop2idx[loop]) + "_" + std::to_string(i);
         Ns.push_back(z3ctx.int_const(idx.data()));
+        N1s.push_back(z3ctx.int_const(idx.data()) - 1);
         premises = premises && ns.back() < Ns.back() && ns.back() >= 0;
         cons_N = cons_N && Ns.back() >= 0;
     }
@@ -1795,7 +1811,10 @@ z3::expr c2z3::loop_bound(Loop* loop) {
     z3::expr res = loop_cond && cons_N && exit_cond;
     z3::tactic t = z3::tactic(z3ctx, "qe"); // & z3::tactic(z3ctx, "ctx-solver-simplify");
     z3::goal g(z3ctx);
-    g.add(res);
+    if (loop->isRotatedForm())
+        g.add(res.substitute(Ns, N1s));
+    else
+        g.add(res);
     auto r = t.apply(g);
     z3::expr final_res = z3ctx.bool_val(true);
     for (int i = 0; i < r.size(); i++) {

@@ -32,6 +32,10 @@ class Condition:
                 return False
         return True
 
+    @property
+    def free_symbols(self):
+        return set(self.cond.free_symbols)
+
 class TrueCondition(Condition):
     def evaluate(self, values):
         return True
@@ -49,6 +53,10 @@ class And(Condition):
     def __init__(self, lhs, rhs):
         self.lhs = lhs
         self.rhs = rhs
+
+    @property
+    def free_symbols(self):
+        return set.union(self.lhs.free_symbols, self.rhs.free_symbols)
 
     def evaluate(self, values):
         res = self.lhs.evaluate(values) and self.rhs.evaluate(values)
@@ -90,6 +98,10 @@ class Or(Condition):
     def __init__(self, lhs, rhs):
         self.lhs = lhs
         self.rhs = rhs
+
+    @property
+    def free_symbols(self):
+        return set.union(self.lhs.free_symbols, self.rhs.free_symbols)
     
     def subs(self, mapping):
         return Or(self.lhs.subs(mapping), self.rhs.subs(mapping))
@@ -187,6 +199,10 @@ class ModCondition(Condition):
     def __init__(self, lhs, rhs):
         self.lhs = lhs
         self.rhs = rhs
+
+    @property
+    def free_symbols(self):
+        return set.union(self.lhs.free_symbols, self.rhs.free_symbols)
 
     def subs(self, mapping):
         return ModCondition(self.lhs.subs(mapping, simultaneous=True), self.rhs)

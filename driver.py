@@ -6,7 +6,7 @@ def main():
     tool_name = 'build/main'
     filename = 'test/test.c'
     target = 'test/test.ll'
-    cmd = ['clang', '-emit-llvm', '-S' , '-Xclang', '-disable-O0-optnone', filename, '-o', target]
+    cmd = ['clang', '-emit-llvm', '-S' , '-O0', '-Xclang', '-disable-O0-optnone', filename, '-o', target]
     tmp_path = 'tmp/'
     is_success = subprocess.run(cmd)
     if not is_success:

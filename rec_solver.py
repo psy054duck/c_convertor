@@ -9,7 +9,7 @@ def main(filename):
     out_filename = "tmp/closed.smt2"
     closed = solve_file(filename)
     solver = z3.Solver()
-    for k, e in closed.to_z3().items():
+    for k, e in closed.items():
         solver.add(k == e)
     with open(out_filename, 'w') as fp:
         fp.write(solver.to_smt2())

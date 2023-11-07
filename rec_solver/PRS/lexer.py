@@ -7,7 +7,7 @@ tokens = (
    'PLUS',
    'MINUS',
    'TIMES',
-   # 'DIVIDE',
+   'DIV',
    'LPAREN',
    'RPAREN',
    'LBRACE',
@@ -33,6 +33,7 @@ tokens = (
 t_PLUS    = r'\+'
 t_MINUS   = r'-'
 t_TIMES   = r'\*'
+t_DIV     = r'\/'
 t_LPAREN  = r'\('
 t_RPAREN  = r'\)'
 t_LBRACE  = r'\{'

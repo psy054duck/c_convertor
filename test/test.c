@@ -8,41 +8,34 @@ void assume_abort_if_not(int cond) {
 }
 void __VERIFIER_assert(bool cond) __attribute__((const)) { if(!(cond)) { ERROR: {reach_error();abort();} } }
 extern int __VERIFIER_nondet_int(void);
-void *malloc(unsigned int size);
 
-#define N 10000
-	// int a[N];
-	// int b[N];
-	// int c[N];
-	// int d[N];
-struct _S
-{
- int n;
-};
-typedef struct _S S;
-int main()
-{
-S a[N];
-S b[N];
-S c[N];
- int i;
- // for(i = 0; i < 1000000; i++)
- // {
- //  int v;
- //         v = __VERIFIER_nondet_int();
- //  a[i].n= v;
- //  v = __VERIFIER_nondet_int();
- //  b[i].n = v;
- // }
- for(int i = 0; i < N; i++)
- {
-  c[i].n = a[i].n + b[i].n;
-  // c[i] = a[i] + b[i];
- }
- for(int i = 0; i < N; i++)
- {
-  __VERIFIER_assert(c[i].n == a[i].n + b[i].n);
-  // __VERIFIER_assert(c[i] == a[i] + b[i]);
- }
- return 0;
+int f(int z) {
+  return z + 2;
+}
+
+int main() {
+    int X, Y;
+    int v, x, y;
+    X = __VERIFIER_nondet_int();
+    Y = __VERIFIER_nondet_int();
+    v = 2 * Y - X;
+    y = 0;
+    x = 0;
+
+    while (1) {
+        if (!(x <= X))
+            break;
+        // out[x] = y
+
+        if (v < 0) {
+            v = v + 2 * Y;
+        } else {
+            v = v + 2 * (Y - X);
+            y++;
+        }
+        x++;
+    }
+    __VERIFIER_assert(2*Y*x - 2*x*y - X + 2*Y - v + 2*y == 0);
+
+    return 0;
 }

@@ -197,6 +197,93 @@ def simplify_index_seq(seq):
         return [(list(reversed(prefix[:end])), 1), list(reversed((prefix + list(reversed(last_seg)))[end:end+len(last_seg)]))]
     return [list(reversed(prefix[:len(last_seg)]))]
 
+def pow_to_mul(expr):
+    """
+    Convert integer powers in an expression to Muls, like a**2 => a*a.
+    """
+    pows = list(expr.atoms(sp.Pow))
+    if any(not e.is_Integer for b, e in (i.as_base_exp() for i in pows)):
+
+        raise ValueError("A power contains a non-integer exponent")
+    #repl = zip(pows, (Mul(*list([b]*e for b, e in i.as_base_exp()), evaluate=False) for i in pows))
+    repl = zip(pows, (sp.Mul(*[b]*e, evaluate=False) for b,e in (i.as_base_exp() for i in pows)))
+    return expr.subs(repl), list(repl)
+
+def to_z3(sp_expr):
+    self = sp.factor(sp_expr)
+    self, repl = pow_to_mul(self)
+    if isinstance(self, sp.Add):
+        res = sum([to_z3(arg) for arg in self.args])
+    elif isinstance(self, sp.Mul):
+        res = 1
+        for arg in reversed(self.args):
+            if arg.is_number and not arg.is_Integer:
+                try:
+                    res = (res*arg.numerator())/arg.denominator()
+                except:
+                    res = (res*arg.numerator)/arg.denominator
+            else:
+                res = res * to_z3(arg)
+        return z3.simplify(res)
+        # return reduce(lambda x, y: x*y, [to_z3(arg) for arg in reversed(self.args)])
+    elif isinstance(self, sp.Piecewise):
+        if len(self.args) == 1:
+            res = to_z3(self.args[0][0])
+        else:
+            cond  = to_z3(self.args[0][1])
+            res = z3.If(cond, to_z3(self.args[0][0]), to_z3(self.args[1][0]))
+    elif isinstance(self, sp.And):
+        res = z3.And(*[to_z3(arg) for arg in self.args])
+    elif isinstance(self, sp.Or):
+        res = z3.Or(*[to_z3(arg) for arg in self.args])
+    elif isinstance(self, sp.Not):
+        res = z3.Not(*[to_z3(arg) for arg in self.args])
+    elif isinstance(self, sp.Gt):
+        res = to_z3(self.lhs) > to_z3(self.rhs)
+    elif isinstance(self, sp.Ge):
+        res = to_z3(self.lhs) >= to_z3(self.rhs)
+    elif isinstance(self, sp.Lt):
+        res = to_z3(self.lhs) < to_z3(self.rhs)
+    elif isinstance(self, sp.Le):
+        res = to_z3(self.lhs) <= to_z3(self.rhs)
+    elif isinstance(self, sp.Eq):
+        res = to_z3(self.lhs) == to_z3(self.rhs)
+    elif isinstance(self, sp.Ne):
+        res = to_z3(self.lhs) != to_z3(self.rhs)
+    elif isinstance(self, sp.Integer) or isinstance(self, int):
+        res = z3.IntVal(int(self))
+    elif isinstance(self, sp.Symbol):
+        res = z3.Int(str(self))
+    elif isinstance(self, sp.Rational):
+        # return z3.RatVal(self.numerator, self.denominator)
+        res = z3.IntVal(self.numerator) / z3.IntVal(self.denominator)
+    elif isinstance(self, sp.Pow):
+        if self.base == 0: res = z3.IntVal(0)
+        else: raise Exception('%s' % self)
+    elif isinstance(self, sp.Mod):
+        res = to_z3(self.args[0]) % to_z3(self.args[1])
+    elif isinstance(self, sp.Abs):
+        res = z3.Abs(to_z3(self.args[0]))
+    elif isinstance(self, sp.Sum):
+        s = z3.Function('Sum', z3.IntSort(), z3.IntSort(), z3.IntSort(), z3.IntSort(), z3.IntSort())
+        # expr, (idx, start, end) = self.args
+        expr, *l = self.args
+        res = to_z3(expr)
+        for idx, start, end in l:
+            res = s(res, to_z3(idx), to_z3(start), to_z3(end))
+    elif self is sp.true:
+        res = z3.BoolVal(True)
+    elif self is sp.false:
+        res = z3.BoolVal(False)
+    elif self.is_Function:
+        func = self.func
+        args = self.args
+        z3_func = z3.Function(func.name, *([z3.IntSort()]*(len(args) + 1)))
+        res = z3_func(*[to_z3(arg) for arg in args])
+    else:
+        raise Exception('Conversion for "%s" has not been implemented yet: %s' % (type(self), self))
+    return z3.simplify(res)
+
 if __name__ == '__main__':
     n = sp.Symbol('n')
     poly = n**2 + 3*n + 4

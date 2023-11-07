@@ -1,21 +1,24 @@
 from operator import index
-from wolframclient.evaluation.kernel import localsession
 # from utils import closed_form2mod
 from numpy import SHIFT_INVALID, matrix
 import sympy as sp
 import z3
 import functools
 import random
+from itertools import product
 
 from sympy.utilities.iterables import connected_components
 from .guess import guess_pattern
 from .utils import my_expand, my_simplify, next_element, next_element_by_index, strict2non, mk_begin_with_z3, simplify_index_seq
 from .validation import validate
 from .condition import PolyCondition
-# from .mathematica_manipulation import matrix2mathematica, matrix_power_mathematica, matrix_mul
 
-def matrix_mul(m1, m2):
-    return m1 * m2
+# DEFAULT_MATH_TOOL = 'mathematica'
+DEFAULT_MATH_TOOL = 'sympy'
+
+if DEFAULT_MATH_TOOL == 'mathematica':
+    from wolframclient.evaluation.kernel import localsession
+    from .mathematica_manipulation import matrix2mathematica, matrix_power_mathematica, matrix_mul
 
 def jordan_cell_power(jc, n):
         N = jc.shape[0]
@@ -37,8 +40,7 @@ def matrix_power_sympy(M, n):
         c = P.inv()
         return P*sp.diag(*jordan_cells)*P.inv()
 
-# def matrix_power(M, n, methods='mathematica'):
-def matrix_power(M, n, methods='sympy'):
+def matrix_power(M, n, methods=DEFAULT_MATH_TOOL):
     if methods == 'sympy':
         return matrix_power_sympy(M, n)
     else:
@@ -49,7 +51,116 @@ def matrix_power(M, n, methods='sympy'):
 #         return [([seq[0][0][1]], 1), ([seq[0][0][0]], 1), seq[-1]]
 #     return seq
 
-def symbolic_closed_form(A, x0, conds, order, n, bnd=100):
+def matrix2transitions(A, order):
+    var_vec = sp.Matrix(order)
+    transitions = []
+    for a in A:
+        transition_mat = a*var_vec
+        constant = sp.Symbol('constant')
+        transitions.append({var: transition_mat[i].subs({constant: 1}) for i, var in enumerate(order) if str(var) != 'constant'})
+    return transitions
+
+def solve_rec_expr(transitions, x0, conds, order, n):
+    return solve_poly_recurrence_expr(transitions, x0, conds, order, n)
+
+# def solve_poly_recurrence_expr(A, x0, conds, order, n):
+def solve_poly_recurrence_expr(transitions, x0, conds, order, n, degr=2):
+    X = [var for var in order if str(var) != 'constant']
+    # transitions = matrix2transitions(A, order)
+    ks_polynomials = vec_space_d(X, x0, transitions, degr)
+    inits = {var: x0[i] for i, var in enumerate(order) if str(var) != 'constant'}
+    res = []
+    for k, polynomials in ks_polynomials:
+        for p in polynomials:
+            if p == sp.Integer(1): continue
+            res_p = solve_poly_rec(k, p, transitions, inits)
+            res.append(res_p)
+    return res
+
+def gen_poly_template(X, d):
+    index_cnt = 1
+    monomials = {sp.Integer(1)}
+    for i in range(d):
+        monomials_pair = set(product(X, monomials))
+        monomials = monomials.union(set(x*y for x, y in monomials_pair))
+    monomials = list(monomials)
+    coeffs = sp.symbols('a:%d' % len(monomials), Real=True)
+    res = sum([a*m for a, m in zip(coeffs, monomials)])
+    return res.as_poly(*X), list(coeffs), monomials
+
+def vec_space_d(X, inits, transitions, d):
+    poly_template, coeffs, monomials = gen_poly_template(X, d)
+    possible_k = None
+    for tran in transitions:
+        poly_prime = poly_template.as_expr().subs(tran, simultaneous=True).as_poly(*X)
+        coords = [mono.as_expr().subs(tran, simultaneous=True).as_poly(*X) for mono in monomials]
+        M = sp.Matrix([[coord.coeff_monomial(mono) for mono in monomials] for coord in coords]).T
+        # print(M.eigenvects())
+        if possible_k is None:
+            possible_k = set(M.eigenvals().keys())
+        else:
+            possible_k = possible_k.intersection(M.eigenvals().keys())
+
+    ret = []
+    for k in possible_k:
+        all_coeffs = []
+        for tran in transitions:
+            poly_prime = poly_template.as_expr().subs(tran, simultaneous=True).as_poly(*X)
+            # poly_coeffs = poly_prime.coeffs()
+            rem = poly_prime - k*poly_template
+            rem_coeffs = rem.coeffs()
+            all_coeffs.extend(rem_coeffs)
+        res, _ = sp.linear_eq_to_matrix(all_coeffs, *coeffs)
+        basis = res.nullspace()
+        basis_instances = []
+        for vec in basis:
+            instance = poly_template.subs({c: v for v, c in zip(vec, coeffs)}, simultaneous=True)
+            numerator, _ = sp.fraction(sp.factor(instance))
+            basis_instances.append(numerator)
+        # symbolic_baiss = [(vec.T * Matrix(coeffs))[0] for vec in basis]
+        if len(basis_instances) != 0:
+            ret.append((k, basis_instances))
+    all_coeffs = []
+    const_dummy_symbol = sp.Symbol('aaaaa0', real=True)
+    coeffs.append(const_dummy_symbol)
+    for tran in transitions:
+        poly_prime = poly_template.as_expr().subs(tran, simultaneous=True).as_poly(*X)
+        rem = poly_prime - poly_template - const_dummy_symbol
+        rem_coeffs = rem.coeffs()
+        all_coeffs.extend(rem_coeffs)
+    res, _ = sp.linear_eq_to_matrix(all_coeffs, *coeffs)
+    basis = res.nullspace()
+    basis_instances = []
+    for vec in basis:
+        instance = poly_template.subs({c: v for v, c in zip(vec, coeffs)}, simultaneous=True)
+        numerator, _ = sp.fraction(sp.factor(instance))
+        basis_instances.append(numerator)
+    if len(basis) != 0:
+        ret.append((sp.Integer(1), basis_instances))
+    return ret
+
+def solve_poly_rec(k, p, transitions, inits):
+    _n = sp.Symbol('n', integer=True)
+    if k != 1:
+        if k == 0:
+            if sp.simplify(p.subs(inits, simultaneous=True) == 0):
+                return (p, 0)
+            else:
+                return (p, sp.Piecewise((0, _n >= 1), (p.subs(inits, simultaneous=True), True)))
+        elif sp.simplify(p.subs(inits, simultaneous=True)) == 0:
+            return (p, 0)
+            # return (p, k**_n*sp.simplify(p.subs(inits, simultaneous=True)))
+        else:
+            return (p, sp.simplify(p.subs(inits, simultaneous=True))*k**_n)
+            # return (1, 1)
+    else:
+        cs = [sp.simplify(p.subs(tran, simultaneous=True) - p) for tran in transitions]
+        if all([c == cs[0] for c in cs]):
+            c = cs[0]
+            return (p, sp.simplify(p.subs(inits, simultaneous=True)) + _n*c)
+
+
+def symbolic_closed_form_linear(A, x0, conds, order, n, bnd=100):
     rename = {order[i]: sp.Symbol('_PRS_x%d' % i) for i in range(len(order))}
     sat = z3.Solver()
     qe = z3.Then('qe', 'ctx-solver-simplify')

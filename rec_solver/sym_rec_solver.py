@@ -1,4 +1,4 @@
-from .PRS.prs_solver import solve_sym, solve_sym_str
+from .PRS.prs_solver import solve_sym, solve_sym_str, solve_recurrence_expr
 # from .PRS.mathematica_manipulation import session
 import z3
 import sympy as sp
@@ -77,12 +77,17 @@ def pretty_solve_and_print(filename):
                     var_mapping[variables[j]].append((var_closed.subs(n_s, n_s-k_s), z3.And(condition, n >= k+len(first_elements_after_k), (n-k) % period == i)))
 
 def solve_file(filename):
-    res, variables, initial_symbols = solve_sym(filename)
-    return ClosedForm(res, variables, initial_symbols, z3.Int('n'))
+    res = solve_sym(filename)
+    if isinstance(res, tuple):
+        closed, variables, initial_symbols = res
+        return ClosedForm(closed, variables, initial_symbols, z3.Int('n')).to_z3()
+    else:
+        return ClosedForm.list2z3(res)
+
 
 if __name__ == '__main__':
     # fire.Fire(main)
     # fire.Fire(pretty_solve_and_print)
     # pretty_solve_and_print('../temp/rec.txt')
     pretty_solve_and_print('test.txt')
-    session.terminate()
+# session.terminate()
