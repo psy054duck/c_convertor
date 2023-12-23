@@ -198,6 +198,14 @@ class PolyCondition(Condition):
     def neg(self):
         return PolyCondition(-self.cond, strict=not self.strict)
 
+class NondetCondition(Condition):
+    def __init__(Condition):
+        pass
+
+    def __str__(self):
+        return '*'
+
+
 class ModCondition(Condition):
     def __init__(self, lhs, rhs):
         self.lhs = lhs

@@ -7,6 +7,7 @@
 class UnimplementedOperationException: public std::runtime_error {
     public:
         UnimplementedOperationException(int opcode): runtime_error(Instruction::getOpcodeName(opcode)) {}
+        UnimplementedOperationException(const char* err): runtime_error(err) {}
 };
 
 std::string get_validation_type_name(validation_type ty) {
@@ -59,15 +60,15 @@ c2z3::c2z3(std::unique_ptr<Module> &mod): m(std::move(mod)), rec_s(z3ctx), expre
 
     // MPM.addPass(createModuleToFunctionPassAdaptor(createFunctionToLoopPassAdaptor(LoopRotatePass())));
     MPM.addPass(createModuleToFunctionPassAdaptor(LoopSimplifyPass()));
-    MPM.addPass(createModuleToFunctionPassAdaptor(LoopFusePass()));
-    MPM.addPass(createModuleToFunctionPassAdaptor(LoopSimplifyPass()));
+    // MPM.addPass(createModuleToFunctionPassAdaptor(LoopFusePass()));
+    // MPM.addPass(createModuleToFunctionPassAdaptor(LoopSimplifyPass()));
     // MPM.addPass(createModuleToFunctionPassAdaptor(createFunctionToLoopPassAdaptor(IndVarSimplifyPass())));
     MPM.addPass(createModuleToFunctionPassAdaptor(SCCPPass()));
     MPM.addPass(createModuleToFunctionPassAdaptor(GVNPass()));
-    // MPM.addPass(createModuleToFunctionPassAdaptor(DCEPass()));
+    MPM.addPass(createModuleToFunctionPassAdaptor(DCEPass()));
     MPM.addPass(createModuleToFunctionPassAdaptor(InstructionNamerPass()));
     MPM.addPass(createModuleToFunctionPassAdaptor(AggressiveInstCombinePass()));
-    MPM.addPass(createModuleToFunctionPassAdaptor(MemorySSAPrinterPass(output_fd, true)));
+    // MPM.addPass(createModuleToFunctionPassAdaptor(MemorySSAPrinterPass(output_fd)));
     // MPM.addPass(createModuleToFunctionPassAdaptor(MemorySSAWrapperPass()));
 
     MPM.run(*m, MAM);
@@ -75,6 +76,39 @@ c2z3::c2z3(std::unique_ptr<Module> &mod): m(std::move(mod)), rec_s(z3ctx), expre
 
     m->print(output_fd, NULL);
     output_fd.close();
+    // auto &fam = MAM.getResult<FunctionAnalysisManagerModuleProxy>(*m).getManager();
+    // for (auto F = m->begin(); F != m->end(); F++) {
+    //     if (!F->isDeclaration()) {
+    //         LoopInfo& LI = fam.getResult<LoopAnalysis>(*F);
+    //         MemorySSA& MSSA = fam.getResult<MemorySSAAnalysis>(*F).getMSSA();
+    //         DominatorTree DT = DominatorTree(*F);
+    //         PostDominatorTree PDT = PostDominatorTree(*F);
+    //         // LIs[&*F] = LI;
+    //         LIs.emplace(&*F, LI);
+    //         DTs.emplace(&*F, DominatorTree(*F));
+    //         PDTs.emplace(&*F, PostDominatorTree(*F));
+    //         MSSAs.emplace(&*F, MSSA);
+    //         // MSSAs.insert_or_assign(&*F, MSSA);
+    //         if (F->getName() == "main") {
+    //             main = &*F;
+    //         }
+    //     }
+    // }
+    analyze_module();
+    LoopInfo& LI = LIs.at(main);
+    for (Loop* loop : LI.getLoopsInPreorder()) {
+        int depth = loop->getLoopDepth();
+        if (depth) {
+            throw UnimplementedOperationException("Do not support loop nest deeper than 2")
+        } else if (depth == 1) {
+            BasicBlock* latch = loop->getLoopLatch();
+            BasicBlock* exiting = loop->getExitingBlock();
+            if 
+        }
+    }
+}
+
+void c2z3::analyze_module() {
     auto &fam = MAM.getResult<FunctionAnalysisManagerModuleProxy>(*m).getManager();
     for (auto F = m->begin(); F != m->end(); F++) {
         if (!F->isDeclaration()) {
@@ -93,8 +127,8 @@ c2z3::c2z3(std::unique_ptr<Module> &mod): m(std::move(mod)), rec_s(z3ctx), expre
             }
         }
     }
-    get_loop_idx();
 }
+
 
 use_vector c2z3::getAllAssertions() {
     use_vector res;
@@ -336,7 +370,6 @@ rec_ty c2z3::loop2rec(Loop* loop) {
     rec_ty total_recs;
     for (auto& phi : header->phis()) {
         rec_ty phi_rec = header_phi_as_rec(&phi);
-
         total_recs.insert(phi_rec.begin(), phi_rec.end());
     }
     return total_recs;
@@ -451,6 +484,8 @@ z3::expr_vector c2z3::inst2z3(Instruction* inst, BasicBlock* prev_bb=nullptr) {
         auto called_name = called->getName();
         if (called_name.endswith("uint")) {
             res.push_back(f(args) >= 0);
+        } else if (called_name == "assume_abort_if_not") {
+            res.push_back(use2z3(&CI->getOperandUse(0)));
         }
     } else if (auto CI = dyn_cast_or_null<PHINode>(inst)) {
         if (CI->getNumIncomingValues() == 1) {
@@ -1123,7 +1158,7 @@ z3::expr_vector c2z3::simplify_using_closed(z3::expr e) {
     z3::expr cur_e = e;
     for (rec_ty c : cached_closed) {
         for (auto p : c) {
-            if (p.first.is_app() && p.first.args()[0] == n) {
+            if (p.first.is_app() && p.first.args()[0].to_string() == "n") {
                 z3::func_decl f = p.first.decl();
                 z3::expr closed_form = p.second.substitute(src, dst);
                 z3::func_decl_vector fs(z3ctx);
@@ -1245,11 +1280,14 @@ z3::expr_vector c2z3::path2z3(path_ty p) {
             axioms.push_back(path_condition_one_stride(prev_bb, bb));
         }
         Loop* loop = LI.getLoopFor(bb);
-        if (loop) {
+        if (loop && LI.getLoopDepth(bb) <= 1) {
             visited_loops.insert(loop);
             z3::expr_vector loop_exprs = loop2z3(loop);
             combine_vec(axioms, loop_exprs);
             prev_bb = nullptr;
+        } else if (loop) {
+            prev_bb = nullptr;
+            throw UnimplementedOperationException("Do not support nested loop with depth larger than 2");
         } else {
             z3::expr_vector local_exprs = bb2z3(bb, prev_bb);
             combine_vec(axioms, local_exprs);
@@ -1339,7 +1377,7 @@ closed_form_ty c2z3::solve_loop(Loop* loop) {
                     continue;
                 }
                 for (auto p : rec_res) {
-                    if (p.first.is_var() && p.first.args()[0] == n) {
+                    if (p.first.is_var() && (p.first.args()[0].to_string() == "n")) {
                         z3::func_decl f = p.first.decl();
                         z3::expr closed_form = p.second.substitute(src, dst);
                         z3::func_decl_vector fs(z3ctx);
@@ -1360,9 +1398,6 @@ closed_form_ty c2z3::solve_loop(Loop* loop) {
     // if (!rec_res.empty()) {
     //     // closed.push_back(res);
     //     z3::expr ind_var = z3ctx.int_const("n0");
-         // for (auto r : rec_res) {
-         //    errs() << r.first.to_string() << " = " << r.second.to_string() << "\n";
-         // }
     // }
     return new_rec_res;
 }
@@ -1478,7 +1513,8 @@ std::vector<path_ty> c2z3::get_paths_from_to(BasicBlock* from, BasicBlock* to) {
         BasicBlock* cur_bb = *bb;
         if (is_back_edge(cur_bb, to)) continue;
         Loop *loop = LI.getLoopFor(cur_bb);
-        if (loop) cur_bb =loop->getHeader();
+        // if (loop) cur_bb =loop->getHeader();
+        if (loop) cur_bb = loop->getOutermostLoop()->getHeader();
         auto prev_paths = get_paths_from_to(from, cur_bb);
         for (auto p : prev_paths) {
             p.push_back(to);

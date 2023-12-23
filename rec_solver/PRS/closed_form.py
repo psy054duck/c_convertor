@@ -88,18 +88,33 @@ def gen_poly_template(X, d):
     res = sum([a*m for a, m in zip(coeffs, monomials)])
     return res.as_poly(*X), list(coeffs), monomials
 
+def get_transition_degr(transition, X):
+    return max([tran.as_poly(*X).total_degree() for tran in transition.values()])
+
+def get_max_transitions_degr(transitions, X):
+    return max([get_transition_degr(tran, X) for tran in transitions])
+
 def vec_space_d(X, inits, transitions, d):
     poly_template, coeffs, monomials = gen_poly_template(X, d)
     possible_k = None
+    matrices = []
+    d_p = get_max_transitions_degr(transitions, X)
+    _, _, complete_monomials = gen_poly_template(X, d*d_p)
+    num_higher_monomials = len(complete_monomials) - len(monomials)
     for tran in transitions:
         poly_prime = poly_template.as_expr().subs(tran, simultaneous=True).as_poly(*X)
         coords = [mono.as_expr().subs(tran, simultaneous=True).as_poly(*X) for mono in monomials]
-        M = sp.Matrix([[coord.coeff_monomial(mono) for mono in monomials] for coord in coords]).T
-        # print(M.eigenvects())
+        # M = sp.Matrix([[coord.coeff_monomial(mono) for mono in monomials] for coord in coords]).T
+        M = sp.Matrix([[coord.coeff_monomial(mono) for mono in complete_monomials] for coord in coords]).T
+        matrices.append(M)
+
+    for M in matrices:
+        M_upper = M[:num_higher_monomials, :]
+        M_lower = M[num_higher_monomials:, :]
         if possible_k is None:
-            possible_k = set(M.eigenvals().keys())
+            possible_k = set(M_lower.eigenvals().keys())
         else:
-            possible_k = possible_k.intersection(M.eigenvals().keys())
+            possible_k = possible_k.intersection(M_lower.eigenvals().keys())
 
     ret = []
     for k in possible_k:
@@ -108,9 +123,11 @@ def vec_space_d(X, inits, transitions, d):
             poly_prime = poly_template.as_expr().subs(tran, simultaneous=True).as_poly(*X)
             # poly_coeffs = poly_prime.coeffs()
             rem = poly_prime - k*poly_template
+            print(rem)
             rem_coeffs = rem.coeffs()
             all_coeffs.extend(rem_coeffs)
         res, _ = sp.linear_eq_to_matrix(all_coeffs, *coeffs)
+        print(res.shape)
         basis = res.nullspace()
         basis_instances = []
         for vec in basis:

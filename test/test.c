@@ -3,40 +3,58 @@ extern void abort(void);
 extern void __assert_fail(const char *, const char *, unsigned int, const char *) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__noreturn__));
 void reach_error() { __assert_fail("0", "brs2.c", 10, "reach_error"); }
 extern void abort(void);
-void assume_abort_if_not(int cond) {
-  if(!cond) {abort();}
-}
-void __VERIFIER_assert(bool cond) __attribute__((const)) { if(!(cond)) { ERROR: {reach_error();abort();} } }
+// void assume_abort_if_not(bool cond);
+ void assume_abort_if_not(int cond) {
+   if(!cond) {abort();}
+ }
+// void __VERIFIER_assert(bool cond) __attribute__((const)) { if(!(cond)) { ERROR: {reach_error();abort();} } }
+void __VERIFIER_assert(bool cond) { if(!(cond)) { ERROR: {reach_error();abort();} } }
 extern int __VERIFIER_nondet_int(void);
+extern int __VERIFIER_nondet_uint(void);
 
 int f(int z) {
   return z + 2;
 }
 
 int main() {
-    int a, n, x, y, z;
-    a = __VERIFIER_nondet_int();
-    n = 0;
-    x = 0;
-    y = 1;
-    z = 6;
+    unsigned a, b;
+    unsigned x, y, u, v;
+    a = __VERIFIER_nondet_uint();
+    b = __VERIFIER_nondet_uint();
+    assume_abort_if_not(a >= 1);  //infinite loop if remove
+    assume_abort_if_not(b >= 1);
+
+    assume_abort_if_not(a <= 65535);
+    assume_abort_if_not(b <= 65535);
+
+    x = a;
+    y = b;
+    u = b;
+    v = 0;
 
     while (1) {
-        if (!(n <= a))
+        if (!(x != y))
             break;
 
-        n = n + 1;
-        x = x + y;
-        y = y + z;
-        z = z + 6;
+        while (1) {
+            if (!(x > y))
+                break;
+            x = x - y;
+            v = v + u;
+        }
+
+        while (1) {
+            if (!(x < y))
+                break;
+            y = y - x;
+            u = u + v;
+        }
     }
 
-    __VERIFIER_assert(z == 6*n + 6);
-    __VERIFIER_assert(6*a*x - x*z + 12*x == 0);
-    __VERIFIER_assert(a*z - 6*a - 2*y + 2*z - 10 == 0);
-    __VERIFIER_assert(2*y*y - 3*x*z - 18*x - 10*y + 3*z - 10 == 0);
-    __VERIFIER_assert(z*z - 12*y - 6*z + 12 == 0);
-    __VERIFIER_assert(y*z - 18*x - 12*y + 2*z - 6 == 0);
-    
+    // __VERIFIER_assert(u*y + v*y == a*b);
+    __VERIFIER_assert(x == y);
+
+    //x == gcd(a,b)
+    //u + v == lcm(a,b)
     return 0;
 }

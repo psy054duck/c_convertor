@@ -1,7 +1,7 @@
 import sympy as sp
 from sympy.core import symbol
 from sympy.utilities.iterables import strongly_connected_components
-from .condition import And, PolyCondition, ModCondition, TrueCondition
+from .condition import And, PolyCondition, ModCondition, TrueCondition, NondetCondition
 from .closed_form import closed_form, symbolic_closed_form_linear, solve_rec_expr
 # from .old_parser import parse
 from .parser import parse
@@ -64,6 +64,8 @@ def solve_str(recurrence: str):
 
 def solve_sym_str(recurrence: str):
     cond, x0, str_transitions, variables, index = parse(recurrence)
+    if any([c is NondetCondition for c in cond]):
+        raise Exception('Contains Nondterministic Branches')
     sp_transitions = [{sp.Symbol(v): e for v, e in trans.items()} for trans in str_transitions]
     initial_symbols = []
     for i, v in enumerate(x0):

@@ -2,7 +2,7 @@ import ply.yacc as yacc
 import sympy as sp
 
 from .lexer import tokens, lexer
-from .condition import PolyCondition, And, ModCondition, TrueCondition, Or
+from .condition import PolyCondition, And, ModCondition, TrueCondition, Or, NondetCondition
 
 def internal_name(name):
     if name.startswith(PREFIX):
@@ -240,6 +240,10 @@ def p_condition_5(p):
         res = And(res, c)
     p[0] = res
 
+def p_condition_6(p):
+    '''condition : TIMES'''
+    p[0] = NondetCondition()
+
 # def p_condition_4(p):
 #     '''condition : NUMBER EQ expression MOD NUMBER'''
 #     p[0] = ModCondition(p[3] - p[1], p[5])
@@ -285,7 +289,10 @@ def p_if_1(p):
     '''if : IF LPAREN condition RPAREN assignments'''
     true_transition = p[5]
     false_transition = {v: sp.Symbol(v) for v in variables + ['constant']}
-    p[0] = ([p[3]], [true_transition, false_transition])
+    if isinstance(p[3], TrueCondition):
+        p[0] = ([p[3]], [true_transition])
+    else:
+        p[0] = ([p[3]], [true_transition, false_transition])
 
 def p_if_2(p):
     '''if : IF LPAREN condition RPAREN assignments ELSE assignments'''

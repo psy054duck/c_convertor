@@ -178,6 +178,8 @@ class c2z3 {
         z3::expr m_as_header_phi(Value* v, MemoryAccess* access, Loop* loop);
         bool is_m_header_phi(MemoryAccess* access, Loop* loop);
 
+        void analyze_module();
+
     private:
         std::unique_ptr<Module> m;
         Function* main;
