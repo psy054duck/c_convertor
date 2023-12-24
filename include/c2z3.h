@@ -178,8 +178,11 @@ class c2z3 {
         z3::expr m_as_header_phi(Value* v, MemoryAccess* access, Loop* loop);
         bool is_m_header_phi(MemoryAccess* access, Loop* loop);
 
-        void analyze_module();
+        void analyze_module(ModulePassManager& MPM);
 
+        std::vector<PHINode*> get_all_phi_nodes(Function* f);
+        int get_successor_index(BranchInst* br, const BasicBlock* bb);
+        void clear_all_info();
     private:
         std::unique_ptr<Module> m;
         Function* main;

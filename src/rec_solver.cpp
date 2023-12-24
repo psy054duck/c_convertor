@@ -427,11 +427,14 @@ void rec_solver::_file2z3(const std::string& filename, initial_ty initial_back) 
         auto kind = e.decl().decl_kind();
         auto args = e.args();
         assert(kind == Z3_OP_EQ);
-        z3::expr k = args[0];
-        z3::expr v = args[1];
+        z3::expr k = args[0].simplify();
+        z3::expr v = args[1].simplify();
+        if (k.is_numeral()) {
+            k = args[1];
+            v = args[0];
+        }
         // std::cout << v.to_string() << "\n";
         res.insert_or_assign(k.substitute(src, dst), v.substitute(initial_back.first, initial_back.second).substitute(src, dst).simplify());
-        // std::cout << e.to_string() << "\n";
     }
     // print_res();
 }

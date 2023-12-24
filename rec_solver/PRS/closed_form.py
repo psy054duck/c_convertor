@@ -123,11 +123,9 @@ def vec_space_d(X, inits, transitions, d):
             poly_prime = poly_template.as_expr().subs(tran, simultaneous=True).as_poly(*X)
             # poly_coeffs = poly_prime.coeffs()
             rem = poly_prime - k*poly_template
-            print(rem)
             rem_coeffs = rem.coeffs()
             all_coeffs.extend(rem_coeffs)
         res, _ = sp.linear_eq_to_matrix(all_coeffs, *coeffs)
-        print(res.shape)
         basis = res.nullspace()
         basis_instances = []
         for vec in basis:

@@ -66,7 +66,6 @@ class ClosedForm:
     @classmethod
     def list2z3(cls, l):
         ret = {utils.to_z3(k): utils.to_z3(v) for k, v in l}
-        print(ret)
         return ret
         
     

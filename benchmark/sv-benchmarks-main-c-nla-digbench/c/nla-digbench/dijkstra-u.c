@@ -1,19 +1,19 @@
-#include <stdbool.h>
+/* Compute the floor of the square root, by Dijkstra */
+
 extern void abort(void);
 extern void __assert_fail(const char *, const char *, unsigned int, const char *) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__noreturn__));
-void reach_error() { __assert_fail("0", "brs2.c", 10, "reach_error"); }
+void reach_error() { __assert_fail("0", "dijkstra-u.c", 5, "reach_error"); }
+extern unsigned int __VERIFIER_nondet_uint(void);
 extern void abort(void);
-// void assume_abort_if_not(bool cond);
- void assume_abort_if_not(int cond) {
-   if(!cond) {abort();}
- }
-// void __VERIFIER_assert(bool cond) __attribute__((const)) { if(!(cond)) { ERROR: {reach_error();abort();} } }
-void __VERIFIER_assert(bool cond) { if(!(cond)) { ERROR: {reach_error();abort();} } }
-extern int __VERIFIER_nondet_int(void);
-extern int __VERIFIER_nondet_uint(void);
-
-int f(int z) {
-  return z + 2;
+void assume_abort_if_not(int cond) {
+  if(!cond) {abort();}
+}
+void __VERIFIER_assert(int cond) {
+    if (!(cond)) {
+    ERROR:
+        {reach_error();}
+    }
+    return;
 }
 
 int main() {
@@ -35,6 +35,12 @@ int main() {
     //q == 4^n
 
     while (1) {
+        __VERIFIER_assert(r < 2 * p + q);
+        __VERIFIER_assert(p*p + r*q == n*q);
+        __VERIFIER_assert(h * h * h - 12 * h * n * q + 16 * n * p * q - h * q * q - 4 * p * q * q + 12 * h * q * r - 16 * p * q * r == 0);
+        __VERIFIER_assert(h * h * n - 4 * h * n * p + 4 * (n * n) * q - n * q * q - h * h * r + 4 * h * p * r - 8 * n * q * r + q * q * r + 4 * q * r * r == 0);
+        __VERIFIER_assert(h * h * p - 4 * h * n * q + 4 * n * p * q - p * q * q + 4 * h * q * r - 4 * p * q * r == 0);
+        __VERIFIER_assert(p * p - n * q + q * r == 0);
 
         if (!(q != 1))
             break;

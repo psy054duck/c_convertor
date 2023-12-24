@@ -94,21 +94,62 @@ c2z3::c2z3(std::unique_ptr<Module> &mod): m(std::move(mod)), rec_s(z3ctx), expre
     //         }
     //     }
     // }
-    analyze_module();
+    analyze_module(MPM);
     LoopInfo& LI = LIs.at(main);
+    // std::vector<PHINode*> phis = get_all_phi_nodes(main);
     for (Loop* loop : LI.getLoopsInPreorder()) {
         int depth = loop->getLoopDepth();
-        if (depth) {
-            throw UnimplementedOperationException("Do not support loop nest deeper than 2")
-        } else if (depth == 1) {
+        // if (depth > 2) {
+        //     throw UnimplementedOperationException("Do not support loop nest deeper than 2");
+        // } else if (depth >= 2) {
+        if (depth >= 2) {
+            std::vector<PHINode*> affected_phis;
             BasicBlock* latch = loop->getLoopLatch();
-            BasicBlock* exiting = loop->getExitingBlock();
-            if 
+            BasicBlock* exit_bb = loop->getExitBlock();
+            if (!exit_bb) {
+                throw UnimplementedOperationException("Multiple exit blocks");
+            }
+            IRBuilder builder(exit_bb);
+            builder.SetInsertPoint(&exit_bb->front());
+            auto terminator = latch->getTerminator();
+            BasicBlock* header = loop->getHeader();
+            auto branch = dyn_cast_or_null<BranchInst>(terminator);
+            assert(branch);
+            int idx = get_successor_index(branch, header);
+            assert(idx != -1);
+            branch->setSuccessor(idx, exit_bb);
+            for (PHINode& phi : header->phis()) {
+                Value* value_from_latch = phi.getIncomingValueForBlock(latch);
+                phi.removeIncomingValue(latch);
+                PHINode* new_phi = builder.CreatePHI(phi.getType(), 2);
+                new_phi->addIncoming(&phi, header);
+                new_phi->addIncoming(value_from_latch, latch);
+            }
         }
     }
+    analyze_module(MPM);
 }
 
-void c2z3::analyze_module() {
+int c2z3::get_successor_index(BranchInst* br, const BasicBlock* bb) {
+    int res = -1;
+    for (int i = 0; i < br->getNumSuccessors(); i++) {
+        if (br->getSuccessor(i) == bb) {
+            return i;
+        }
+    }
+    return res;
+}
+
+void c2z3::clear_all_info() {
+    LIs.clear();
+    DTs.clear();
+    PDTs.clear();
+    MSSAs.clear();
+}
+
+void c2z3::analyze_module(ModulePassManager& MPM) {
+    MPM.run(*m, MAM);
+    clear_all_info();
     auto &fam = MAM.getResult<FunctionAnalysisManagerModuleProxy>(*m).getManager();
     for (auto F = m->begin(); F != m->end(); F++) {
         if (!F->isDeclaration()) {
@@ -127,6 +168,18 @@ void c2z3::analyze_module() {
             }
         }
     }
+}
+
+std::vector<PHINode*> c2z3::get_all_phi_nodes(Function* f) {
+    std::vector<PHINode*> phis;
+    for (BasicBlock& bb : *f) {
+        for (Instruction& inst : bb) {
+            if (auto phi = dyn_cast_or_null<PHINode>(&inst)) {
+                phis.push_back(phi);
+            }
+        }
+    }
+    return phis;
 }
 
 
@@ -1158,7 +1211,7 @@ z3::expr_vector c2z3::simplify_using_closed(z3::expr e) {
     z3::expr cur_e = e;
     for (rec_ty c : cached_closed) {
         for (auto p : c) {
-            if (p.first.is_app() && p.first.args()[0].to_string() == "n") {
+            if (p.first.is_app() && p.first.args().size() > 0 && p.first.args()[0].to_string() == "n") {
                 z3::func_decl f = p.first.decl();
                 z3::expr closed_form = p.second.substitute(src, dst);
                 z3::func_decl_vector fs(z3ctx);
@@ -1299,6 +1352,9 @@ z3::expr_vector c2z3::path2z3(path_ty p) {
     std::vector<closed_form_ty> closed;
     for (Loop* loop : visited_loops) {
         closed_form_ty res = solve_loop(loop);
+        // for (auto pair : res) {
+        //     errs() << pair.first.to_string() << ' ' << pair.second.to_string() << "\n";
+        // }
         z3::expr bnd = loop_bound(loop);
         axioms.push_back(bnd);
         z3::expr_vector ns(z3ctx);
@@ -1377,7 +1433,7 @@ closed_form_ty c2z3::solve_loop(Loop* loop) {
                     continue;
                 }
                 for (auto p : rec_res) {
-                    if (p.first.is_var() && (p.first.args()[0].to_string() == "n")) {
+                    if (p.first.is_app() && p.first.args().size() > 0 && (p.first.args()[0].to_string() == "n0")) {
                         z3::func_decl f = p.first.decl();
                         z3::expr closed_form = p.second.substitute(src, dst);
                         z3::func_decl_vector fs(z3ctx);
@@ -1395,6 +1451,9 @@ closed_form_ty c2z3::solve_loop(Loop* loop) {
             }
         }
     }
+    // for (auto pair : new_rec_res) {
+    //     errs() << pair.first.to_string() << ' ' << pair.second.to_string() << "\n";
+    // }
     // if (!rec_res.empty()) {
     //     // closed.push_back(res);
     //     z3::expr ind_var = z3ctx.int_const("n0");
