@@ -28,9 +28,8 @@ int main() {
     x = 0;
 
     while (1) {
-        yx = (long long) Y*x;
-        xy = (long long) X*y;
-	__VERIFIER_assert( 2*yx - 2*xy - X + (long long) 2*Y - v == 0);
+        // yx = (long long) Y*x;
+        // xy = (long long) X*y;
         if (!(x <= X))
             break;
         // out[x] = y

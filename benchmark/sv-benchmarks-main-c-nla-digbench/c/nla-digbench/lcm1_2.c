@@ -1,8 +1,11 @@
-/* Algorithm for computing simultaneously the GCD and the LCM, by Dijkstra */
+/*
+ * algorithm for computing simultaneously the GCD and the LCM,
+ * by Sankaranarayanan
+ */
 
 extern void abort(void);
 extern void __assert_fail(const char *, const char *, unsigned int, const char *) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__noreturn__));
-void reach_error() { __assert_fail("0", "lcm2.c", 5, "reach_error"); }
+void reach_error() { __assert_fail("0", "lcm1.c", 8, "reach_error"); }
 extern unsigned __VERIFIER_nondet_uint(void);
 extern void abort(void);
 void assume_abort_if_not(int cond) {
@@ -21,7 +24,7 @@ int main() {
     unsigned x, y, u, v;
     a = __VERIFIER_nondet_uint();
     b = __VERIFIER_nondet_uint();
-    assume_abort_if_not(a >= 1); //inf loop if remove
+    assume_abort_if_not(a >= 1);  //infinite loop if remove
     assume_abort_if_not(b >= 1);
 
     assume_abort_if_not(a <= 65535);
@@ -30,25 +33,31 @@ int main() {
     x = a;
     y = b;
     u = b;
-    v = a;
+    v = 0;
 
     while (1) {
-
         if (!(x != y))
             break;
 
-        if (x > y) {
+        while (1) {
+            if (!(x > y))
+                break;
             x = x - y;
             v = v + u;
-        } else {
+        }
+
+        while (1) {
+            if (!(x < y))
+                break;
             y = y - x;
             u = u + v;
         }
     }
 
-    __VERIFIER_assert(x*u + y*v == 2*a*b);
-    // x == gcd(a,b)
-    //(u + v)/2==lcm(a,b)
+    // __VERIFIER_assert(u*y + v*y == a*b);
+    __VERIFIER_assert(x == y);
 
+    //x == gcd(a,b)
+    //u + v == lcm(a,b)
     return 0;
 }

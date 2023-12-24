@@ -17,38 +17,32 @@ int f(int z) {
 }
 
 int main() {
-    unsigned int n, p, q, r, h;
-
-    n = __VERIFIER_nondet_uint();
-    assume_abort_if_not(n < 4294967295 / 4);  // Avoid non-terminating loop
-
-    p = 0;
-    q = 1;
-    r = n;
-    h = 0;
-    while (1) {
-        if (!(q <= n))
-            break;
-
-        q = 4 * q;
-    }
-    //q == 4^n
+    int X, Y;
+    long long x, y, v, xy, yx;
+    X = __VERIFIER_nondet_int();
+    Y = __VERIFIER_nondet_int();
+    v = ((long long) 2 * Y) - X;         // cast required to avoid int overflow
+    y = 0;
+    x = 0;
 
     while (1) {
-
-        if (!(q != 1))
+        // yx = (long long) Y*x;
+        // xy = (long long) X*y;
+        if (!(x <= X))
             break;
+        // out[x] = y
 
-        q = q / 4;
-        h = p + q;
-        p = p / 2;
-        if (r >= h) {
-            p = p + q;
-            r = r - h;
+        if (v < 0) {
+            v = v + (long long) 2 * Y;
+        } else {
+            v = v + 2 * ((long long) Y - X);
+            y++;
         }
+        x++;
     }
-    __VERIFIER_assert(h*h*h - 12*h*n + 16*n*p + 12*h*r - 16*p*r - h - 4*p == 0);
-    __VERIFIER_assert(p*p - n + r == 0);
-    __VERIFIER_assert(h*h*p - 4*h*n + 4*n*p + 4*h*r - 4*p*r - p == 0);
+    xy = (long long) x*y;
+    yx = (long long) Y*x;
+    __VERIFIER_assert(2*yx - 2*xy - X + (long long) 2*Y - v + 2*y == 0);
+
     return 0;
 }

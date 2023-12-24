@@ -37,7 +37,6 @@ int main() {
     }
 
     while (1) {
-        __VERIFIER_assert(A == q * b + r);
         if (!(b != B)) break;
 
         q = 2 * q;

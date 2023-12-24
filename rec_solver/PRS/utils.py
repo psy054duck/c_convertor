@@ -202,11 +202,11 @@ def pow_to_mul(expr):
     Convert integer powers in an expression to Muls, like a**2 => a*a.
     """
     pows = list(expr.atoms(sp.Pow))
-    if any(not e.is_Integer for b, e in (i.as_base_exp() for i in pows)):
-
-        raise ValueError("A power contains a non-integer exponent")
+    if any(not e.is_Integer for _, e in (i.as_base_exp() for i in pows)):
+        if any(b != -1 for b, _ in (p.as_base_exp() for p in pows)):
+            raise ValueError("A power contains a non-integer exponent")
     #repl = zip(pows, (Mul(*list([b]*e for b, e in i.as_base_exp()), evaluate=False) for i in pows))
-    repl = zip(pows, (sp.Mul(*[b]*e, evaluate=False) for b,e in (i.as_base_exp() for i in pows)))
+    repl = zip(pows, (sp.Mul(*[b]*e, evaluate=False) if b != -1 else sp.Piecewise((1, sp.Eq(e % 2, 0)), (-1, True)) for b,e in (i.as_base_exp() for i in pows)))
     return expr.subs(repl), list(repl)
 
 def to_z3(sp_expr):

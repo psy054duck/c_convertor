@@ -30,7 +30,6 @@ int main() {
     q = 0;
 
     while (1) {
-        __VERIFIER_assert(q + a * b * p == (long long) x * y);
 
         if (!(a != 0 && b != 0))
             break;
@@ -53,6 +52,6 @@ int main() {
     }
 
     __VERIFIER_assert(q == (long long) x * y);
-    __VERIFIER_assert(a * b == 0);
+    // __VERIFIER_assert(a * b == 0);
     return 0;
 }

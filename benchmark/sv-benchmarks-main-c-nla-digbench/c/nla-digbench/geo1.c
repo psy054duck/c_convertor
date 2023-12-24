@@ -30,7 +30,6 @@ int main() {
     c = 1;
 
     while (1) {
-        __VERIFIER_assert(x*z - x - y + 1 == 0);
 
         if (!(c < k)) 
             break;

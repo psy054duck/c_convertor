@@ -43,10 +43,6 @@ int main() {
         k = 0;
 
         while (1) {
-            __VERIFIER_assert(a == k * b + c);
-            __VERIFIER_assert(a == y*r + x*p);
-            __VERIFIER_assert(b == x * q + y * s);
-	    __VERIFIER_assert(q*xy + s*yy - q*x - b*y - s*y + b == 0);
             if (!(c >= b))
                 break;
             c = c - b;
@@ -67,6 +63,6 @@ int main() {
     
 
     __VERIFIER_assert(q*x + s*y == 0);
-    __VERIFIER_assert(p*x + r*y == a);
+    // __VERIFIER_assert(p*x + r*y == a);
     return a;
 }

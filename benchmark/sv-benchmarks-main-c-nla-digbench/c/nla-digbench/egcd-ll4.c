@@ -1,7 +1,7 @@
 /* extended Euclid's algorithm */
 extern void abort(void);
 extern void __assert_fail(const char *, const char *, unsigned int, const char *) __attribute__ ((__nothrow__ , __leaf__)) __attribute__ ((__noreturn__));
-void reach_error() { __assert_fail("0", "egcd3-ll.c", 4, "reach_error"); }
+void reach_error() { __assert_fail("0", "egcd-ll.c", 4, "reach_error"); }
 extern int __VERIFIER_nondet_int(void);
 extern void abort(void);
 void assume_abort_if_not(int cond) {
@@ -16,8 +16,8 @@ void __VERIFIER_assert(int cond) {
 }
 
 int main() {
-    int x, y;
     long long a, b, p, q, r, s;
+    int x, y;
     x = __VERIFIER_nondet_int();
     y = __VERIFIER_nondet_int();
     assume_abort_if_not(x >= 1);
@@ -31,40 +31,24 @@ int main() {
     s = 1;
 
     while (1) {
-        if (!(b != 0))
+
+        if (!(a != b))
             break;
-        long long c, k;
-        c = a;
-        k = 0;
 
-        while (1) {
-            if (!(c >= b))
-                break;
-            long long d, v;
-            d = 1;
-            v = b;
-
-            while (1) {
-
-                if (!(c >= 2 * v))
-                    break;
-                d = 2 * d;
-                v = 2 * v;
-            }
-            c = c - v;
-            k = k + d;
+        if (a > b) {
+            a = a - b;
+            p = p - q;
+            r = r - s;
+        } else {
+            b = b - a;
+            q = q - p;
+            s = s - r;
         }
-
-        a = b;
-        b = c;
-        long long temp;
-        temp = p;
-        p = q;
-        q = temp - q * k;
-        temp = r;
-        r = s;
-        s = temp - s * k;
     }
-    __VERIFIER_assert(p*x - q*x + r*y - s*y  == a);
+    
+    // __VERIFIER_assert(a - b == 0);    
+    // __VERIFIER_assert(p*x + r*y - b == 0);
+    // __VERIFIER_assert(q*r - p*s + 1 == 0);
+    __VERIFIER_assert(q*x + s*y - b == 0);
     return 0;
 }

@@ -27,6 +27,7 @@
 #include <map>
 #include <set>
 #include <fstream>
+#include <iostream>
 
 #include "rec_solver.h"
 #include "c2z3.h"
@@ -53,7 +54,8 @@ int main(int argc, char** argv) {
 
         validation_type check_res = c_convertor.check_assert(a, i);
         // validation_type check_res = c_convertor.check_assert_backward(a, i);
-        errs() << get_validation_type_name(check_res) << "\n";
+        // errs() << get_validation_type_name(check_res) << "\n";
+        std::cout << get_validation_type_name(check_res) << "\n";
         i++;
         // errs() << c_convertor.use2z3(a).to_string() << "\n";
     }

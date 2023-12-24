@@ -1192,6 +1192,9 @@ z3::expr c2z3::assertion2z3(Use* a) {
         premise = premise && n_args[i] >= 0 && n_args[i] < N_args[i];
     }
     z3::expr body = use2z3(a);
+    if (!body.is_bool()) {
+        body = (body != 0);
+    }
     if (dim > 0)
         return z3::forall(n_args, z3::implies(premise, body));
     else
@@ -1658,6 +1661,10 @@ z3::func_decl c2z3::get_z3_function(Value* v, int dim) {
     auto inst = dyn_cast_or_null<Instruction>(v);
     assert(inst);
     z3::sort ret_sort = is_bool(v) ? z3ctx.bool_sort() : z3ctx.int_sort();
+    if (auto CI = dyn_cast_or_null<ZExtInst>(v)) {
+        Value* op = CI->getOperand(0);
+        if (is_bool(op)) ret_sort = z3ctx.bool_sort();
+    }
     int arity = get_arity(v);
     const char* var_name = v->getName().data();
     array_access_ty access;
