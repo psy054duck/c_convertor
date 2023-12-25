@@ -74,8 +74,6 @@ c2z3::c2z3(std::unique_ptr<Module> &mod): m(std::move(mod)), rec_s(z3ctx), expre
     MPM.run(*m, MAM);
 
 
-    m->print(output_fd, NULL);
-    output_fd.close();
     // auto &fam = MAM.getResult<FunctionAnalysisManagerModuleProxy>(*m).getManager();
     // for (auto F = m->begin(); F != m->end(); F++) {
     //     if (!F->isDeclaration()) {
@@ -97,7 +95,10 @@ c2z3::c2z3(std::unique_ptr<Module> &mod): m(std::move(mod)), rec_s(z3ctx), expre
     analyze_module(MPM);
     LoopInfo& LI = LIs.at(main);
     // std::vector<PHINode*> phis = get_all_phi_nodes(main);
-    for (Loop* loop : LI.getLoopsInPreorder()) {
+    auto all_loops = LI.getLoopsInPreorder();
+    raw_fd_ostream before_fd("tmp/before.ll", ec);
+    m->print(before_fd, NULL);
+    for (Loop* loop : all_loops) {
         int depth = loop->getLoopDepth();
         // if (depth > 2) {
         //     throw UnimplementedOperationException("Do not support loop nest deeper than 2");
@@ -115,19 +116,36 @@ c2z3::c2z3(std::unique_ptr<Module> &mod): m(std::move(mod)), rec_s(z3ctx), expre
             BasicBlock* header = loop->getHeader();
             auto branch = dyn_cast_or_null<BranchInst>(terminator);
             assert(branch);
+            assert(branch->isUnconditional());
             int idx = get_successor_index(branch, header);
             assert(idx != -1);
             branch->setSuccessor(idx, exit_bb);
+            int i = 0;
             for (PHINode& phi : header->phis()) {
+                i++;
                 Value* value_from_latch = phi.getIncomingValueForBlock(latch);
                 phi.removeIncomingValue(latch);
-                PHINode* new_phi = builder.CreatePHI(phi.getType(), 2);
+                // for (auto& use : phi.uses()) {
+                //     Value* user_v = use.getUser();
+                //     auto inst_v = dyn_cast_or_null<Instruction>(user_v);
+                //     if (loop->contains(inst_v->getParent())) continue;
+                //     inst_v->re
+                // }
+                PHINode* new_phi = builder.CreatePHI(phi.getType(), 2, phi.getName() + itostr(i));
                 new_phi->addIncoming(&phi, header);
                 new_phi->addIncoming(value_from_latch, latch);
+                phi.replaceUsesWithIf(new_phi, [loop, new_phi](Use& u) {
+                    auto inst_v = dyn_cast_or_null<Instruction>(u.getUser());
+                    return !loop->contains(inst_v->getParent()) && inst_v != new_phi;
+                });
             }
         }
     }
+    raw_fd_ostream after_fd("tmp/after.ll", ec);
+    m->print(after_fd, NULL);
     analyze_module(MPM);
+    m->print(output_fd, NULL);
+    output_fd.close();
 }
 
 int c2z3::get_successor_index(BranchInst* br, const BasicBlock* bb) {
@@ -148,8 +166,8 @@ void c2z3::clear_all_info() {
 }
 
 void c2z3::analyze_module(ModulePassManager& MPM) {
-    MPM.run(*m, MAM);
     clear_all_info();
+    MPM.run(*m, MAM);
     auto &fam = MAM.getResult<FunctionAnalysisManagerModuleProxy>(*m).getManager();
     for (auto F = m->begin(); F != m->end(); F++) {
         if (!F->isDeclaration()) {
@@ -203,6 +221,7 @@ std::set<PHINode*> c2z3::get_header_defs(Value* v) {
     // get phi nodes in header that v depends directly/indirectly on
     std::set<PHINode*> res;
     auto inst = dyn_cast_or_null<Instruction>(v);
+    if (!inst) return {};
     LoopInfo& LI = LIs.at(main);
     Loop* loop = LI.getLoopFor(inst->getParent());
     BasicBlock* header = loop->getHeader();
@@ -366,6 +385,9 @@ z3::expr c2z3::_express_v_as_header_phis(Value* v, Loop* inner_loop) {
 }
 
 z3::expr c2z3::phi2ite_header(PHINode* phi) {
+    if (phi->getNumIncomingValues() == 1) {
+        return express_v_as_header_phis(phi->getIncomingValue(0));
+    }
     DominatorTree& DT = DTs.at(main);
     PostDominatorTree& PDT = PDTs.at(main);
     assert(phi->getNumIncomingValues() == 2);
@@ -854,7 +876,12 @@ z3::expr_vector c2z3::get_arr_args(int arity) {
 
 z3::expr c2z3::v2z3(Value* v, int dim, int plus) {
     if (auto CI = dyn_cast_or_null<ConstantInt>(v)) {
-        return z3ctx.int_val(CI->getSExtValue());
+        IntegerType* i_type = CI->getType();
+        bool is_bool = i_type->isIntegerTy(1);
+        if (is_bool)
+            return z3ctx.bool_val(CI->getZExtValue());
+        else
+            return z3ctx.int_val(CI->getSExtValue());
     }
     int arity = get_arity(v);
     z3::func_decl f = get_z3_function(v, arity + dim);
@@ -902,7 +929,7 @@ z3::expr c2z3::use2z3(Use* u) {
     bool is_bool = tp->isIntegerTy(1);
     if (auto CI = dyn_cast<ConstantInt>(use_def)) {
         if (is_bool) {
-            return z3ctx.bool_val(CI->getSExtValue());
+            return z3ctx.bool_val(CI->getZExtValue());
         } else {
             return z3ctx.int_val(CI->getSExtValue());
         }
@@ -1214,7 +1241,7 @@ z3::expr_vector c2z3::simplify_using_closed(z3::expr e) {
     z3::expr cur_e = e;
     for (rec_ty c : cached_closed) {
         for (auto p : c) {
-            if (p.first.is_app() && p.first.args().size() > 0 && p.first.args()[0].to_string() == "n") {
+            if (p.first.is_app() && p.first.args().size() > 0 && p.first.args()[0].to_string() == "n0") {
                 z3::func_decl f = p.first.decl();
                 z3::expr closed_form = p.second.substitute(src, dst);
                 z3::func_decl_vector fs(z3ctx);
@@ -1267,6 +1294,8 @@ validation_type c2z3::check_assert(Use* a, int out_idx) {
         auto p = paths[i];
         z3::solver s(z3ctx);
         s.add(path2z3(p));
+        z3::expr dummy = z3ctx.int_const("dummy");
+        s.add(z3::forall(dummy, 2*((dummy*(1+dummy))/2) == dummy*(1+dummy)));
         std::string filename = "tmp/tmp" + std::to_string(out_idx) + "_path_"+ std::to_string(i) + ".smt2";
         std::ofstream out(filename);
         z3::expr neg_assertion = !assertion2z3(a);

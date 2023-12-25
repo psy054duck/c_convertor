@@ -89,8 +89,7 @@ rec_solver::rec_solver(rec_ty& eqs, z3::expr var, z3::context& z3ctx): z3ctx(z3c
 
 void rec_solver::set_eqs(rec_ty& eqs) {
     for (auto r : eqs) {
-        // std::cout << r.first.to_string() << " = " << r.second.to_string() << "\n";
-        rec_eqs.insert_or_assign(r.first, r.second);
+        rec_eqs.insert_or_assign(r.first, hoist_ite(r.second));
     }
     // rec_eqs = eqs;
 }
@@ -372,6 +371,21 @@ std::vector<z3::expr> rec_solver::parse_cond(z3::expr e) {
     return res;
 }
 
+// std::pair<std::vector<z3::expr>, std::vector<z3::expr>>
+// rec_solver::parse_expr_(z3::expr e) {
+//     std::vector<z3::expr> conds;
+//     std::vector<z3::expr> bodies;
+//     auto kind = e.decl().decl_kind();
+//     auto args = e.args();
+//     if (e.is_numeral() || e.is_const()) {
+//         return {conds, {e}};
+//     } else if (kind == Z3_OP_ADD) {
+//         for (auto arg : args) {
+//             auto arg_cond_body = parse_expr_(arg);
+//         }
+//     }
+// }
+
 std::vector<z3::expr> rec_solver::parse_expr(z3::expr e) {
     auto kind = e.decl().decl_kind();
     auto args = e.args();
@@ -380,10 +394,12 @@ std::vector<z3::expr> rec_solver::parse_expr(z3::expr e) {
     if (is_ite_free(e)) {
         res.push_back(e);
     } else if (kind == Z3_OP_ITE) {
-        for (auto ep : parse_expr(args[1]))
+        for (auto ep : parse_expr(args[1])) {
             res.push_back(ep);
-        for (auto ep : parse_expr(args[2]))
+        }
+        for (auto ep : parse_expr(args[2])) {
             res.push_back(ep);
+        }
     }
     return res;
 }
@@ -436,7 +452,6 @@ void rec_solver::_file2z3(const std::string& filename, initial_ty initial_back) 
         // std::cout << v.to_string() << "\n";
         res.insert_or_assign(k.substitute(src, dst), v.substitute(initial_back.first, initial_back.second).substitute(src, dst).simplify());
     }
-    // print_res();
 }
 
 void rec_solver::print_recs() {
@@ -449,4 +464,54 @@ void rec_solver::print_res() {
     for (auto r : res) {
         std::cout << r.first.to_string() << " = " << r.second.to_string() << "\n";
     }
+}
+
+z3::expr rec_solver::hoist_ite(z3::expr e) {
+    auto kind = e.decl().decl_kind();
+    auto args = e.args();
+    if (e.is_numeral() || e.is_const() || kind == Z3_OP_ITE) {
+        return e;
+    }
+    z3::expr_vector hoisted_args(z3ctx);
+    for (auto arg : args) {
+        hoisted_args.push_back(hoist_ite(arg));
+    }
+    int which = 0;
+    for (; which < hoisted_args.size() && hoisted_args[which].decl().decl_kind() != Z3_OP_ITE; which++);
+    if (which == hoisted_args.size()) {
+        return e;
+    }
+    auto ite_args = hoisted_args[which].args();
+    z3::expr cond = ite_args[0];
+    z3::expr body_true = ite_args[1];
+    z3::expr body_false = ite_args[2];
+    if (kind == Z3_OP_ADD) {
+        for (int i = 0; i < hoisted_args.size(); i++) {
+            if (i == which) continue;
+            body_true = body_true + hoisted_args[i];
+            body_false = body_false + hoisted_args[i];
+        }
+    } else if (kind == Z3_OP_MUL) {
+        for (int i = 0; i < hoisted_args.size(); i++) {
+            if (i == which) continue;
+            body_true = body_true * hoisted_args[i];
+            body_false = body_false * hoisted_args[i];
+        }
+    } else if (kind == Z3_OP_SUB) {
+        for (int i = 0; i < hoisted_args.size(); i++) {
+            if (i == which) continue;
+            if (i < which) {
+                body_true = hoisted_args[i] - body_true;
+                body_false = hoisted_args[i] - body_false;
+            } else {
+                body_true = body_true - hoisted_args[i];
+                body_false = body_false - hoisted_args[i];
+            }
+        }
+    } else {
+        std::cout << e.to_string() << "\n";
+        std::cout << kind << "\n";
+        abort();
+    }
+    return z3::ite(cond, body_true, body_false);
 }

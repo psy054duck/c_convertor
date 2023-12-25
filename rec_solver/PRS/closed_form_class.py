@@ -2,6 +2,7 @@ import z3
 import re
 import sympy as sp
 from . import utils
+from functools import reduce
 sim = z3.Then('ctx-simplify', 'unit-subsume-simplify')
 class ClosedForm:
     def __init__(self, res, variables, initial_symbols, n):
@@ -75,13 +76,16 @@ class ClosedForm:
             if str(var) == 'constant': continue
             var_closed_form = self.var_mapping[var]
             if len(var_closed_form) > 1:
-                res[var] = self._expr_to_z3(var_closed_form[-1][0])
+                # res[var] = self._expr_to_z3(var_closed_form[-1][0])
+                res[var] = self.ep2z3(var_closed_form[-1][0])
                 for closed_form, cond in var_closed_form[:-1]:
-                    res[var] = z3.If(z3.simplify(z3.And(*sim(cond)[0])), self._expr_to_z3(closed_form), res[var])
+                    # res[var] = z3.If(z3.simplify(z3.And(*sim(cond)[0])), self._expr_to_z3(closed_form), res[var])
+                    res[var] = z3.If(z3.simplify(z3.And(*sim(cond)[0])), self.ep2z3(closed_form), res[var])
                     # print(closed_form, cond)
             else:
                 closed_form, _ = var_closed_form[0]
-                res[var] = self._expr_to_z3(closed_form)
+                # res[var] = self._expr_to_z3(closed_form)
+                res[var] = self.ep2z3(closed_form)
         # for var in res:
         #     if str(var) == 's':
         #         print(z3.simplify(z3.substitute(res[var], *[(z3.Int('s'), z3.IntVal(-3)), (z3.Int('n'), z3.IntVal(6))])))
@@ -100,20 +104,74 @@ class ClosedForm:
         repl = zip(pows, (sp.Mul(*[b]*e, evaluate=False) for b,e in (i.as_base_exp() for i in pows)))
         return expr.subs(repl), list(repl)
 
-    def _expr_to_z3(self, expr):
-        if isinstance(expr, int): return z3.IntVal(expr)
-        expr, repl = utils.pow_to_mul(expr)
-        exec('n = z3.Int("n")')
-        for var in self.variables:
-            exec('%s = z3.Int("%s")' % (var, var))
-        for var in self.initial_symbols:
-            exec('%s = z3.Int("%s")' % (var, var))
-        # print(type(re.sub(r'(\d)/', r'z3\.IntVal(\1)/', str(expr)))
-        from z3 import And, Or, Not
-        expr_str = str(expr)
-        for k, v in repl:
-            expr_str = expr_str.replace(str(k), str(v))
-        expr = expr_str.replace('floor', 'z3.ToInt')
-        res = eval('%s' % re.sub(r'/(\d+)', r'/z3.RealVal(\1)', expr))
+    def sp2z3(self, expr):
+        if isinstance(expr, int):
+            return expr
+        elif isinstance(expr, sp.Symbol):
+            name = expr.name
+            sym_z3 = z3.Int(name)
+            return sym_z3
+        elif isinstance(expr, sp.Pow):
+            b, e = expr.as_base_exp()
+            if b == -1:
+                e_z3 = self.sp2z3(e)
+                return z3.If(e_z3 % 2 == 0, 1, -1)
+            elif len(e.free_symbols) > 0:
+                raise ValueError("A power contains a non-integer exponent")
+            else:
+                return reduce(lambda x, y: x*y, [self.sp2z3(b)]*e, 1)
+        elif isinstance(expr, sp.Add):
+            args = expr.args
+            return sum([self.sp2z3(arg) for arg in args])
+        elif isinstance(expr, sp.Rational):
+            numerator, denominator = expr.numerator, expr.denominator
+            numerator_z3 = self.sp2z3(numerator)
+            denominator_z3 = self.sp2z3(denominator)
+            return numerator_z3/denominator_z3
+        elif isinstance(expr, sp.Mul):
+            args = expr.args
+            return reduce(lambda x, y: x*y, [self.sp2z3(arg) for arg in args], 1)
+        else:
+            raise ValueError("%s: %s not supported yet" % (expr, type(expr)))
+
+    def my_factor(self, expr):
+        if not isinstance(expr, sp.Add):
+            return expr
+        args = expr.args
+        denominators = [sp.fraction(arg)[1] for arg in args]
+        divisor = sp.lcm_list(denominators)
+        return sp.simplify(expr*divisor), divisor
+    # print(my_factor(e))
+    def ep2z3(self, expr):
+        expr = sp.expand(expr)
+        if isinstance(expr, sp.Add):
+            num, den = self.my_factor(expr)
+            num_z3 = self.sp2z3(num)
+            den_z3 = self.sp2z3(den)
+            res = num_z3/den_z3
+        else:
+            res = self.sp2z3(expr)
         return res
+
+        # def _expr_to_z3(self, expr):
+        #     if isinstance(expr, int): return z3.IntVal(expr)
+        #     if isinstance(expr, sp.Pow):
+        #         b, e = expr.as_base_exp()
+        #         if b == -1:
+        #             return z3.If(e % 2 == 1)
+        # if isinstance(expr, int): return z3.IntVal(expr)
+        # expr, repl = utils.pow_to_mul(expr)
+        # exec('n = z3.Int("n")')
+        # for var in self.variables:
+        #     exec('%s = z3.Int("%s")' % (var, var))
+        # for var in self.initial_symbols:
+        #     exec('%s = z3.Int("%s")' % (var, var))
+        # # print(type(re.sub(r'(\d)/', r'z3\.IntVal(\1)/', str(expr)))
+        # from z3 import And, Or, Not
+        # expr_str = str(expr)
+        # for k, v in repl:
+        #     expr_str = expr_str.replace(str(k), str(v))
+        # expr = expr_str.replace('floor', 'z3.ToInt')
+        # res = eval('%s' % re.sub(r'/(\d+)', r'/z3.RealVal(\1)', expr))
+        # return res
             # If(cond, )

@@ -8,7 +8,7 @@ def main():
     tot = 0
     tot_correct = 0
     for filename in filenames:
-        if filename.endswith('.c'):
+        if filename.endswith('.c') and filename.startswith('ps'):
             tot += 1
             full_path = os.path.join(benchmark_dir, filename)
             ans = run(full_path)

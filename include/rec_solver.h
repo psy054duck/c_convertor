@@ -49,5 +49,7 @@ class rec_solver {
         void _file2z3(const std::string& filename, initial_ty initial_back);
         void print_res();
         void solve();
+        // std::pair<std::vector<z3::expr>, std::vector<z3::expr>> rec_solver::parse_expr_(z3::expr e);
+        z3::expr hoist_ite(z3::expr e);
 };
 #endif
