@@ -47,6 +47,7 @@
 #include <fstream>
 
 #include "rec_solver.h"
+#include "smt_solver.h"
 
 using namespace llvm;
 typedef std::vector<Use*> use_vector;

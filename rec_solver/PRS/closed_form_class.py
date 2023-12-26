@@ -146,6 +146,11 @@ class ClosedForm:
         expr = sp.expand(expr)
         if isinstance(expr, sp.Add):
             num, den = self.my_factor(expr)
+            # num_poly = num.as_poly(*num.free_symbols)
+            # if num_poly is not None:
+            #     num = sp.factor(num_poly, deep=True)
+            #     print(sp.factor_list(num_poly))
+            #     print(num)
             num_z3 = self.sp2z3(num)
             den_z3 = self.sp2z3(den)
             res = num_z3/den_z3

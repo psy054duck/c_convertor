@@ -96,7 +96,10 @@ void rec_solver::set_eqs(rec_ty& eqs) {
 
 void rec_solver::solve() {
     initial_ty initial_back = rec2file();
-    system("python rec_solver.py tmp/test.txt");
+    int err = system("python rec_solver.py tmp/test.txt > /dev/null");
+    if (err) {
+        exit(-1);
+    }
     file2z3(initial_back);
 }
 
@@ -329,6 +332,10 @@ void rec_solver::_format() {
     for (auto r : rec_eqs) {
         // std::cout << r.first.to_string() << " = " << r.second.to_string() << "\n";
         auto cur_conds = parse_cond(r.second);
+        for (auto e : cur_conds) {
+            std::cout << e.to_string() << "\n";
+        }
+        std::cout << "***********8\n";
         if (cur_conds.size() > conds.size()) {
             conds = cur_conds;
         }

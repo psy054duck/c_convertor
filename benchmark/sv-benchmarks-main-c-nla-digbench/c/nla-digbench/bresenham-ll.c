@@ -30,7 +30,7 @@ int main() {
     while (1) {
         // yx = (long long) Y*x;
         // xy = (long long) X*y;
-        if (!(x <= X))
+        if (!(x != X + 1))
             break;
         // out[x] = y
 

@@ -90,7 +90,7 @@ t_ignore  = ' \t'
 
 # Error handling rule
 def t_error(t):
-    print("Line %d: Illegal character '%s'" % (t.lexer.lineno, t.value[0]))
+    # print("Line %d: Illegal character '%s'" % (t.lexer.lineno, t.value[0]))
     t.lexer.skip(1)
 
 # Build the lexer

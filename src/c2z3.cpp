@@ -105,13 +105,14 @@ c2z3::c2z3(std::unique_ptr<Module> &mod): m(std::move(mod)), rec_s(z3ctx), expre
         // } else if (depth >= 2) {
         if (depth >= 2) {
             std::vector<PHINode*> affected_phis;
+            Loop* parent_loop = loop->getParentLoop();
             BasicBlock* latch = loop->getLoopLatch();
-            BasicBlock* exit_bb = loop->getExitBlock();
-            if (!exit_bb) {
-                throw UnimplementedOperationException("Multiple exit blocks");
-            }
-            IRBuilder builder(exit_bb);
-            builder.SetInsertPoint(&exit_bb->front());
+            BasicBlock* parent_header = parent_loop->getHeader();
+            // if (!exit_bb) {
+            //     throw UnimplementedOperationException("Multiple exit blocks");
+            // }
+            IRBuilder builder(parent_header);
+            builder.SetInsertPoint(&parent_header->front());
             auto terminator = latch->getTerminator();
             BasicBlock* header = loop->getHeader();
             auto branch = dyn_cast_or_null<BranchInst>(terminator);
@@ -119,18 +120,12 @@ c2z3::c2z3(std::unique_ptr<Module> &mod): m(std::move(mod)), rec_s(z3ctx), expre
             assert(branch->isUnconditional());
             int idx = get_successor_index(branch, header);
             assert(idx != -1);
-            branch->setSuccessor(idx, exit_bb);
+            branch->setSuccessor(idx, parent_loop->getHeader());
             int i = 0;
             for (PHINode& phi : header->phis()) {
                 i++;
                 Value* value_from_latch = phi.getIncomingValueForBlock(latch);
                 phi.removeIncomingValue(latch);
-                // for (auto& use : phi.uses()) {
-                //     Value* user_v = use.getUser();
-                //     auto inst_v = dyn_cast_or_null<Instruction>(user_v);
-                //     if (loop->contains(inst_v->getParent())) continue;
-                //     inst_v->re
-                // }
                 PHINode* new_phi = builder.CreatePHI(phi.getType(), 2, phi.getName() + itostr(i));
                 new_phi->addIncoming(&phi, header);
                 new_phi->addIncoming(value_from_latch, latch);
@@ -1295,15 +1290,39 @@ validation_type c2z3::check_assert(Use* a, int out_idx) {
         z3::solver s(z3ctx);
         s.add(path2z3(p));
         z3::expr dummy = z3ctx.int_const("dummy");
-        s.add(z3::forall(dummy, 2*((dummy*(1+dummy))/2) == dummy*(1+dummy)));
+        z3::expr dummy2 = z3ctx.int_const("dummy2");
+        z3::expr_vector dummies(z3ctx);
+        dummies.push_back(dummy);
+        dummies.push_back(dummy2);
+        z3::expr body = dummy*(1+2*dummy*dummy+3*dummy);
+        s.add(z3::forall(dummies, z3::implies(!(dummy2 >= 1 && dummy - dummy2 <= -2) && dummy2 >= 0 && !(dummy2 <= dummy), dummy2 == dummy + 1 || dummy < 0)));
+        s.add(z3::forall(dummy, 6*(body/6) == body));
+        body = dummy*dummy*(1 + dummy*dummy + 2*dummy);
+        s.add(z3::forall(dummy, 4*(body/4) == body));
+        body = -1*dummy + 6*dummy*dummy*dummy*dummy*dummy + 10*dummy*dummy*dummy + 15*dummy*dummy*dummy*dummy;
+        s.add(z3::forall(dummy, 30*(body/30) == body));
+        body = -1*dummy*dummy+ 2*dummy*dummy*dummy*dummy*dummy*dummy + 5*dummy*dummy*dummy*dummy + 6*dummy*dummy*dummy*dummy*dummy;
+        s.add(z3::forall(dummy, 12*(body/12) == body));
+        body = dummy*(1 + dummy);
+        s.add(z3::forall(dummy, 2*(body/2) == body));
+        // int acc = 1;
+        // z3::expr e = dummy;
+        // for (int j = 1; j < 6; j++) {
+        //     acc *= (j + 1);
+        //     e = e*(j + dummy);
+        //     s.add(z3::forall(dummy, acc*(e/acc) == e));
+        // }
         std::string filename = "tmp/tmp" + std::to_string(out_idx) + "_path_"+ std::to_string(i) + ".smt2";
         std::ofstream out(filename);
         z3::expr neg_assertion = !assertion2z3(a);
         s.add(simplify_using_closed(neg_assertion));
+        s.add(z3::forall(dummies, z3::implies(dummy == 0 || dummy == dummy2, dummy*dummy2 == dummy*dummy)));
         out << s.to_smt2().data() << "\n";
         out.close();
 
-        auto val_res = s.check();
+        // auto val_res = s.check();
+        smt_solver solver;
+        auto val_res = solver.check(filename);
         switch (val_res) {
             case z3::sat  : res = wrong  ; break;
             case z3::unsat: res = correct; break;
