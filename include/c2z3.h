@@ -185,6 +185,7 @@ class c2z3 {
         std::vector<PHINode*> get_all_phi_nodes(Function* f);
         int get_successor_index(BranchInst* br, const BasicBlock* bb);
         void clear_all_info();
+        Value* find_def_chain_in_block(Value* v, BasicBlock* bb);
     private:
         std::unique_ptr<Module> m;
         Function* main;
@@ -211,6 +212,7 @@ class c2z3 {
         std::map<Value*, int> array_index;
         std::map<Value*, z3::func_decl> array_z3_func;
         std::map<Value*, BasicBlock*> array_def_block;
+        Value* _find_def_chain_in_block(Value* v, BasicBlock* bb, std::set<Value*>& visited_v);
 };
 
 #endif

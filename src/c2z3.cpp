@@ -99,6 +99,7 @@ c2z3::c2z3(std::unique_ptr<Module> &mod): m(std::move(mod)), rec_s(z3ctx), expre
     raw_fd_ostream before_fd("tmp/before.ll", ec);
     m->print(before_fd, NULL);
     for (Loop* loop : all_loops) {
+        errs() << loop->getHeader()->getName() << "\n";
         int depth = loop->getLoopDepth();
         // if (depth > 2) {
         //     throw UnimplementedOperationException("Do not support loop nest deeper than 2");
@@ -107,12 +108,15 @@ c2z3::c2z3(std::unique_ptr<Module> &mod): m(std::move(mod)), rec_s(z3ctx), expre
             std::vector<PHINode*> affected_phis;
             Loop* parent_loop = loop->getParentLoop();
             BasicBlock* latch = loop->getLoopLatch();
+            // BasicBlock* exit_bb = loop->getExitBlock();
             BasicBlock* parent_header = parent_loop->getHeader();
             // if (!exit_bb) {
             //     throw UnimplementedOperationException("Multiple exit blocks");
             // }
-            IRBuilder builder(parent_header);
-            builder.SetInsertPoint(&parent_header->front());
+            // IRBuilder builder(parent_header);
+            // IRBuilder builder(exit_bb);
+            // builder.SetInsertPoint(&exit_bb->front());
+            // builder.SetInsertPoint(&parent_header->front());
             auto terminator = latch->getTerminator();
             BasicBlock* header = loop->getHeader();
             auto branch = dyn_cast_or_null<BranchInst>(terminator);
@@ -120,19 +124,30 @@ c2z3::c2z3(std::unique_ptr<Module> &mod): m(std::move(mod)), rec_s(z3ctx), expre
             assert(branch->isUnconditional());
             int idx = get_successor_index(branch, header);
             assert(idx != -1);
-            branch->setSuccessor(idx, parent_loop->getHeader());
-            int i = 0;
+            branch->setSuccessor(idx, parent_header);
+            // for (PHINode& phi : header->phis()) {
+                // Value* value_from_latch = phi.getIncomingValueForBlock(latch);
+                // phi.removeIncomingValue(latch);
+                // PHINode* new_phi = builder.CreatePHI(phi.getType(), 2, phi.getName() + std::to_string(i));
+                // new_phi->addIncoming(&phi, header);
+                // new_phi->addIncoming(value_from_latch, latch);
+                // phi.replaceUsesWithIf(new_phi, [loop, new_phi](Use& u) {
+                //     auto inst_v = dyn_cast_or_null<Instruction>(u.getUser());
+                //     return !loop->contains(inst_v->getParent()) && inst_v != new_phi;
+                // });
+            // }
+
+            for (PHINode& phi : parent_header->phis()) {
+                Value* found_def = find_def_chain_in_block(&phi, latch);
+                if (found_def) {
+                    phi.addIncoming(found_def, latch);
+                } else {
+                    phi.addIncoming(&phi, latch);
+                }
+            }
+
             for (PHINode& phi : header->phis()) {
-                i++;
-                Value* value_from_latch = phi.getIncomingValueForBlock(latch);
                 phi.removeIncomingValue(latch);
-                PHINode* new_phi = builder.CreatePHI(phi.getType(), 2, phi.getName() + itostr(i));
-                new_phi->addIncoming(&phi, header);
-                new_phi->addIncoming(value_from_latch, latch);
-                phi.replaceUsesWithIf(new_phi, [loop, new_phi](Use& u) {
-                    auto inst_v = dyn_cast_or_null<Instruction>(u.getUser());
-                    return !loop->contains(inst_v->getParent()) && inst_v != new_phi;
-                });
             }
         }
     }
@@ -141,6 +156,42 @@ c2z3::c2z3(std::unique_ptr<Module> &mod): m(std::move(mod)), rec_s(z3ctx), expre
     analyze_module(MPM);
     m->print(output_fd, NULL);
     output_fd.close();
+    // LoopInfo& new_LI = LIs.at(main);
+    // for (Loop* loop : new_LI.getLoopsInPreorder()) {
+    //     errs() << loop->getHeader()->getName() << "\n";
+    //     // errs() << loop->isLoopSimplifyForm() << "\n";
+    //     errs() << loop->getLoopDepth() << "\n";
+    // }
+}
+
+Value* c2z3::find_def_chain_in_block(Value* v, BasicBlock* bb) {
+    std::set<Value*> visited_v;
+    return _find_def_chain_in_block(v, bb, visited_v);
+}
+
+Value* c2z3::_find_def_chain_in_block(Value* v, BasicBlock* bb, std::set<Value*>& visited_v) {
+    if (visited_v.contains(v)) {
+        return nullptr;
+    }
+    visited_v.insert(v);
+    if (auto CI = dyn_cast_or_null<Constant>(v)) {
+        return nullptr;
+    }
+    auto inst = dyn_cast_or_null<Instruction>(v);
+    assert(inst);
+    BasicBlock& entry = main->getEntryBlock();
+    if (inst->getParent() == &entry && bb != &entry) {
+        return nullptr;
+    }
+    if (inst->getParent() == bb) {
+        return v;
+    }
+    for (int i = 0; i < inst->getNumOperands(); i++) {
+        Value* u = inst->getOperand(i);
+        Value* found = _find_def_chain_in_block(u, bb, visited_v);
+        if (found) return found;
+    }
+    return nullptr;
 }
 
 int c2z3::get_successor_index(BranchInst* br, const BasicBlock* bb) {
@@ -158,6 +209,10 @@ void c2z3::clear_all_info() {
     DTs.clear();
     PDTs.clear();
     MSSAs.clear();
+    LAM.clear();
+    FAM.clear();
+    CGAM.clear();
+    MAM.clear();
 }
 
 void c2z3::analyze_module(ModulePassManager& MPM) {
