@@ -26,6 +26,7 @@ add_executable(main main.cpp)
 add_library(c2z3 c2z3.cpp)
 add_library(rec_solver rec_solver.cpp)
 add_library(smt_solver smt_solver.cpp)
+add_library(loop_transformer loop_transformer.cpp)
 # target_compile_features(c2z3 PUBLIC cxx_std_17)
 
 
@@ -35,5 +36,5 @@ llvm_map_components_to_libnames(llvm_libs core irreader analysis passes)
 message(STATUS "${llvm_libs}")
 
 # Link against LLVM libraries
-target_link_libraries(main c2z3 rec_solver smt_solver ${Z3_LIBRARIES} ${llvm_libs} )
+target_link_libraries(main c2z3 rec_solver smt_solver loop_transformer ${Z3_LIBRARIES} ${llvm_libs} )
 # add_subdirectory(IfConversion)

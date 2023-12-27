@@ -11,7 +11,7 @@
 #include "llvm/IR/Dominators.h"
 #include "llvm/IR/Attributes.h"
 #include "llvm/IR/Function.h"
-#include <llvm/IR/InstIterator.h>
+#include "llvm/IR/InstIterator.h"
 #include "llvm/Analysis/PostDominators.h"
 #include "llvm/Transforms/Utils/LoopSimplify.h"
 #include "llvm/Transforms/Utils/LCSSA.h"
@@ -26,6 +26,7 @@
 #include "llvm/Transforms/Scalar/IndVarSimplify.h"
 #include "llvm/Transforms/Scalar/GVN.h"
 #include "llvm/Transforms/Scalar/DCE.h"
+#include "llvm/Transforms/Scalar/Reg2Mem.h"
 
 #include "llvm/Transforms/AggressiveInstCombine/AggressiveInstCombine.h"
 #include "llvm/Transforms/IPO/ModuleInliner.h"
@@ -48,6 +49,7 @@
 
 #include "rec_solver.h"
 #include "smt_solver.h"
+#include "loop_transformer.h"
 
 using namespace llvm;
 typedef std::vector<Use*> use_vector;
