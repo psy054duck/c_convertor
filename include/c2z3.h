@@ -191,6 +191,7 @@ class c2z3 {
     private:
         std::unique_ptr<Module> m;
         Function* main;
+        Function* unknown_fn;
         std::map<Function*, LoopInfo&> LIs;
         std::map<Function*, DominatorTree> DTs;
         std::map<Function*, PostDominatorTree> PDTs;

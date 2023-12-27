@@ -41,6 +41,9 @@ c2z3::c2z3(std::unique_ptr<Module> &mod): m(std::move(mod)), rec_s(z3ctx), expre
                 F->removeFnAttr(Attribute::NoInline);
             }
         }
+        if (F->getName().starts_with("__VERIFIER_nondet")) {
+            unknown_fn = &*F;
+        }
     }
     PB.registerModuleAnalyses(MAM);
     PB.registerCGSCCAnalyses(CGAM);
@@ -80,7 +83,7 @@ c2z3::c2z3(std::unique_ptr<Module> &mod): m(std::move(mod)), rec_s(z3ctx), expre
     raw_fd_ostream before_fd("tmp/before.ll", ec);
     m->print(before_fd, NULL);
 
-    loop_transformer transformer(main, LI, main);
+    loop_transformer transformer(main, LI, unknown_fn);
     transformer.transform_function();
 
     raw_fd_ostream after_fd("tmp/after.ll", ec);
