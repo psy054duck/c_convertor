@@ -54,30 +54,30 @@ c2z3::c2z3(std::unique_ptr<Module> &mod): m(std::move(mod)), rec_s(z3ctx), expre
     std::error_code ec;
     raw_fd_ostream output_fd("tmp/tmp.ll", ec);
 
-    ModulePassManager MPM;
-    MPM.addPass(ModuleInlinerPass());
-    MPM.addPass(createModuleToFunctionPassAdaptor(PromotePass()));
-    MPM.addPass(createModuleToFunctionPassAdaptor(SROAPass(SROAOptions::ModifyCFG)));
-    MPM.addPass(createModuleToFunctionPassAdaptor(LCSSAPass()));
-    MPM.addPass(createModuleToFunctionPassAdaptor(SimplifyCFGPass()));
+    ModulePassManager MPM_pre;
+    // MPM.addPass(ModuleInlinerPass());
+    // MPM.addPass(createModuleToFunctionPassAdaptor(PromotePass()));
+    // MPM.addPass(createModuleToFunctionPassAdaptor(SROAPass(SROAOptions::ModifyCFG)));
+    // MPM.addPass(createModuleToFunctionPassAdaptor(LCSSAPass()));
+    // MPM.addPass(createModuleToFunctionPassAdaptor(SimplifyCFGPass()));
 
-    // MPM.addPass(createModuleToFunctionPassAdaptor(createFunctionToLoopPassAdaptor(LoopRotatePass())));
-    MPM.addPass(createModuleToFunctionPassAdaptor(LoopSimplifyPass()));
-    // MPM.addPass(createModuleToFunctionPassAdaptor(LoopFusePass()));
-    // MPM.addPass(createModuleToFunctionPassAdaptor(createFunctionToLoopPassAdaptor(IndVarSimplifyPass())));
-    MPM.addPass(createModuleToFunctionPassAdaptor(SCCPPass()));
-    MPM.addPass(createModuleToFunctionPassAdaptor(GVNPass()));
-    MPM.addPass(createModuleToFunctionPassAdaptor(DCEPass()));
-    MPM.addPass(createModuleToFunctionPassAdaptor(InstructionNamerPass()));
-    MPM.addPass(createModuleToFunctionPassAdaptor(AggressiveInstCombinePass()));
-    MPM.addPass(createModuleToFunctionPassAdaptor(RegToMemPass()));
-    // MPM.addPass(createModuleToFunctionPassAdaptor(MemorySSAPrinterPass(output_fd)));
-    // MPM.addPass(createModuleToFunctionPassAdaptor(MemorySSAWrapperPass()));
+    // // MPM.addPass(createModuleToFunctionPassAdaptor(createFunctionToLoopPassAdaptor(LoopRotatePass())));
+    // MPM.addPass(createModuleToFunctionPassAdaptor(LoopSimplifyPass()));
+    // // MPM.addPass(createModuleToFunctionPassAdaptor(LoopFusePass()));
+    // // MPM.addPass(createModuleToFunctionPassAdaptor(createFunctionToLoopPassAdaptor(IndVarSimplifyPass())));
+    // MPM.addPass(createModuleToFunctionPassAdaptor(SCCPPass()));
+    // MPM.addPass(createModuleToFunctionPassAdaptor(GVNPass()));
+    // MPM.addPass(createModuleToFunctionPassAdaptor(DCEPass()));
+    // MPM.addPass(createModuleToFunctionPassAdaptor(InstructionNamerPass()));
+    // MPM.addPass(createModuleToFunctionPassAdaptor(AggressiveInstCombinePass()));
+    // MPM.addPass(createModuleToFunctionPassAdaptor(RegToMemPass()));
+    // // MPM.addPass(createModuleToFunctionPassAdaptor(MemorySSAPrinterPass(output_fd)));
+    // // MPM.addPass(createModuleToFunctionPassAdaptor(MemorySSAWrapperPass()));
 
-    MPM.run(*m, MAM);
+    // MPM.run(*m, MAM);
 
 
-    analyze_module(MPM);
+    analyze_module_pre(MPM_pre);
     LoopInfo& LI = LIs.at(main);
     auto all_loops = LI.getLoopsInPreorder();
     raw_fd_ostream before_fd("tmp/before.ll", ec);
@@ -88,7 +88,8 @@ c2z3::c2z3(std::unique_ptr<Module> &mod): m(std::move(mod)), rec_s(z3ctx), expre
 
     raw_fd_ostream after_fd("tmp/after.ll", ec);
     m->print(after_fd, NULL);
-    analyze_module(MPM);
+    ModulePassManager MPM_post;
+    analyze_module_post(MPM_post);
     m->print(output_fd, NULL);
     output_fd.close();
 }
@@ -110,8 +111,87 @@ void c2z3::clear_all_info() {
     MSSAs.clear();
 }
 
-void c2z3::analyze_module(ModulePassManager& MPM) {
+void c2z3::analyze_module_post(ModulePassManager& MPM) {
     clear_all_info();
+    PB.registerModuleAnalyses(MAM);
+    PB.registerCGSCCAnalyses(CGAM);
+    PB.registerFunctionAnalyses(FAM);
+    PB.registerLoopAnalyses(LAM);
+    PB.crossRegisterProxies(LAM, FAM, CGAM, MAM);
+
+    // std::error_code ec;
+    // raw_fd_ostream output_fd("tmp/tmp.ll", ec);
+
+    MPM.addPass(ModuleInlinerPass());
+    MPM.addPass(createModuleToFunctionPassAdaptor(PromotePass()));
+    MPM.addPass(createModuleToFunctionPassAdaptor(SROAPass(SROAOptions::ModifyCFG)));
+    MPM.addPass(createModuleToFunctionPassAdaptor(LCSSAPass()));
+    MPM.addPass(createModuleToFunctionPassAdaptor(SimplifyCFGPass()));
+
+    // MPM.addPass(createModuleToFunctionPassAdaptor(createFunctionToLoopPassAdaptor(LoopRotatePass())));
+    MPM.addPass(createModuleToFunctionPassAdaptor(LoopSimplifyPass()));
+    // MPM.addPass(createModuleToFunctionPassAdaptor(LoopFusePass()));
+    // MPM.addPass(createModuleToFunctionPassAdaptor(createFunctionToLoopPassAdaptor(IndVarSimplifyPass())));
+    MPM.addPass(createModuleToFunctionPassAdaptor(SCCPPass()));
+    MPM.addPass(createModuleToFunctionPassAdaptor(GVNPass()));
+    MPM.addPass(createModuleToFunctionPassAdaptor(DCEPass()));
+    MPM.addPass(createModuleToFunctionPassAdaptor(InstructionNamerPass()));
+    MPM.addPass(createModuleToFunctionPassAdaptor(AggressiveInstCombinePass()));
+    // MPM.addPass(createModuleToFunctionPassAdaptor(RegToMemPass()));
+    // MPM.addPass(createModuleToFunctionPassAdaptor(MemorySSAPrinterPass(output_fd)));
+    // MPM.addPass(createModuleToFunctionPassAdaptor(MemorySSAWrapperPass()));
+
+    MPM.run(*m, MAM);
+    auto &fam = MAM.getResult<FunctionAnalysisManagerModuleProxy>(*m).getManager();
+    for (auto F = m->begin(); F != m->end(); F++) {
+        if (!F->isDeclaration()) {
+            LoopInfo& LI = fam.getResult<LoopAnalysis>(*F);
+            MemorySSA& MSSA = fam.getResult<MemorySSAAnalysis>(*F).getMSSA();
+            DominatorTree DT = DominatorTree(*F);
+            PostDominatorTree PDT = PostDominatorTree(*F);
+            // LIs[&*F] = LI;
+            LIs.emplace(&*F, LI);
+            DTs.emplace(&*F, DominatorTree(*F));
+            PDTs.emplace(&*F, PostDominatorTree(*F));
+            MSSAs.emplace(&*F, MSSA);
+            // MSSAs.insert_or_assign(&*F, MSSA);
+            if (F->getName() == "main") {
+                main = &*F;
+            }
+        }
+    }
+}
+
+void c2z3::analyze_module_pre(ModulePassManager& MPM) {
+    clear_all_info();
+    PB.registerModuleAnalyses(MAM);
+    PB.registerCGSCCAnalyses(CGAM);
+    PB.registerFunctionAnalyses(FAM);
+    PB.registerLoopAnalyses(LAM);
+    PB.crossRegisterProxies(LAM, FAM, CGAM, MAM);
+
+    // std::error_code ec;
+    // raw_fd_ostream output_fd("tmp/tmp.ll", ec);
+
+    MPM.addPass(ModuleInlinerPass());
+    MPM.addPass(createModuleToFunctionPassAdaptor(PromotePass()));
+    MPM.addPass(createModuleToFunctionPassAdaptor(SROAPass(SROAOptions::ModifyCFG)));
+    MPM.addPass(createModuleToFunctionPassAdaptor(LCSSAPass()));
+    MPM.addPass(createModuleToFunctionPassAdaptor(SimplifyCFGPass()));
+
+    // MPM.addPass(createModuleToFunctionPassAdaptor(createFunctionToLoopPassAdaptor(LoopRotatePass())));
+    MPM.addPass(createModuleToFunctionPassAdaptor(LoopSimplifyPass()));
+    // MPM.addPass(createModuleToFunctionPassAdaptor(LoopFusePass()));
+    // MPM.addPass(createModuleToFunctionPassAdaptor(createFunctionToLoopPassAdaptor(IndVarSimplifyPass())));
+    MPM.addPass(createModuleToFunctionPassAdaptor(SCCPPass()));
+    MPM.addPass(createModuleToFunctionPassAdaptor(GVNPass()));
+    MPM.addPass(createModuleToFunctionPassAdaptor(DCEPass()));
+    MPM.addPass(createModuleToFunctionPassAdaptor(InstructionNamerPass()));
+    MPM.addPass(createModuleToFunctionPassAdaptor(AggressiveInstCombinePass()));
+    MPM.addPass(createModuleToFunctionPassAdaptor(RegToMemPass()));
+    // MPM.addPass(createModuleToFunctionPassAdaptor(MemorySSAPrinterPass(output_fd)));
+    // MPM.addPass(createModuleToFunctionPassAdaptor(MemorySSAWrapperPass()));
+
     MPM.run(*m, MAM);
     auto &fam = MAM.getResult<FunctionAnalysisManagerModuleProxy>(*m).getManager();
     for (auto F = m->begin(); F != m->end(); F++) {

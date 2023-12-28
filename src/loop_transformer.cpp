@@ -95,6 +95,7 @@ loop_transformer::_transform_regions(std::vector<region_ty>& regions, int start)
     BasicBlock* guard = BasicBlock::Create(llvm_ctx, "loop.transform.guard", main);
     builder.SetInsertPoint(guard);
     auto call = builder.CreateCall(unknown_call);
+    auto cmp = builder.CreateCmp(CmpInst::Predicate::ICMP_EQ, call, ConstantInt::getSigned(call->getType(), 0));
     BasicBlock* merge_bb = BasicBlock::Create(llvm_ctx, "loop.transform.merge", main);
     BasicBlock* right_first_bb = regions[start + 1][0];
     BasicBlock* exiting_left_bb = get_exiting_for_region(regions[start]);
@@ -105,7 +106,7 @@ loop_transformer::_transform_regions(std::vector<region_ty>& regions, int start)
         exiting_right_bb = right_guard_merge.second;
     }
     builder.SetInsertPoint(guard);
-    auto br = builder.CreateCondBr(call, regions[start][0], right_first_bb);
+    auto br = builder.CreateCondBr(cmp, regions[start][0], right_first_bb);
     exiting_left_bb->getTerminator()->removeFromParent();
     if (exiting_right_bb->getTerminator())
         exiting_right_bb->getTerminator()->removeFromParent();
