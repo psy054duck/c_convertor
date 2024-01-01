@@ -112,7 +112,7 @@ class ClosedForm:
 
     def sp2z3(self, expr):
         if isinstance(expr, int):
-            return expr
+            return z3.IntVal(expr)
         elif isinstance(expr, sp.Symbol):
             name = expr.name
             sym_z3 = z3.Int(name)
@@ -133,7 +133,7 @@ class ClosedForm:
             numerator, denominator = expr.numerator, expr.denominator
             numerator_z3 = self.sp2z3(numerator)
             denominator_z3 = self.sp2z3(denominator)
-            return numerator_z3//denominator_z3
+            return numerator_z3/denominator_z3
         elif isinstance(expr, sp.Mul):
             args = expr.args
             return reduce(lambda x, y: x*y, [self.sp2z3(arg) for arg in args], 1)
@@ -159,7 +159,7 @@ class ClosedForm:
             #     print(num)
             num_z3 = self.sp2z3(num)
             den_z3 = self.sp2z3(den)
-            res = num_z3//den_z3
+            res = num_z3/den_z3
         else:
             res = self.sp2z3(expr)
         return res

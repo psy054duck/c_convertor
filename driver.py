@@ -23,4 +23,4 @@ def run(filename):
 
 
 if __name__ == '__main__':
-    print(fire.Fire(run))
+    fire.Fire(run)

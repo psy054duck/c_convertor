@@ -5,6 +5,6 @@
 #include <iostream>
 class smt_solver {
     public:
-        z3::check_result check(const std::string& filename);
+        z3::check_result check(const std::string& filename, double timeout);
 };
 #endif
