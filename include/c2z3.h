@@ -142,7 +142,7 @@ class c2z3 {
         
         z3::expr phi2ite_header(PHINode* phi);
         std::pair<z3::expr, z3::expr> _phi2ite_header(PHINode* phi, BasicBlock* merge_bb);
-        z3::expr phi2ite_find_path_condition(PHINode* phi, int incoming_idx, BasicBlock* branch_bb);
+        z3::expr phi2ite_find_path_condition(BasicBlock* from, BasicBlock* to);
         z3::expr phi2ite_find_path_condition_one_step(BasicBlock* from, BasicBlock* to);
 
         bool is_back_edge(BasicBlock* from, BasicBlock* to);

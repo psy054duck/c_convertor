@@ -1,4 +1,4 @@
-set (CMAKE_CXX_STANDARD 17)
+set (CMAKE_CXX_STANDARD 20)
 
 find_package(LLVM REQUIRED CONFIG)
 find_package(Z3 REQUIRED CONFIG HINTS /opt/homebrew/Cellar/z3)
@@ -7,7 +7,6 @@ message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 message(STATUS "Using Z3.cmake in: ${Z3_DIR}")
 # message(STATUS "Using Z3.cmake in: ${Z3_CXX_INCLUDE_DIRS}")
-set (CMAKE_CXX_STANDARD 20)
 
 # Set your project compile flags.
 # E.g. if using the C++ header files

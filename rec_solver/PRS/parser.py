@@ -224,9 +224,12 @@ def p_condition2(p):
 
 def p_condition3(p):
     '''condition : AND LPAREN condition_list RPAREN'''
-    res = And(p[3][0], p[3][1])
-    for c in p[3][2:]:
-        res = And(res, c)
+    try:
+        res = And(p[3][0], p[3][1])
+        for c in p[3][2:]:
+            res = And(res, c)
+    except:
+        res = And(p[3][0], TrueCondition(True))
     p[0] = res
 
 def p_condition_4(p):
@@ -243,6 +246,10 @@ def p_condition_5(p):
 def p_condition_6(p):
     '''condition : TIMES'''
     p[0] = NondetCondition()
+
+def p_condition_7(p):
+    '''condition : LPAREN condition RPAREN'''
+    p[0] = p[2]
 
 # def p_condition_4(p):
 #     '''condition : NUMBER EQ expression MOD NUMBER'''
@@ -303,7 +310,7 @@ def p_if_2(p):
 def p_if_3(p):
     '''if : IF LPAREN condition RPAREN assignments ELSE if'''
     true_transition = p[5]
-    p[0] = ([[p[3]]] + p[7][0], [true_transition] + p[7][1])
+    p[0] = ([p[3]] + p[7][0], [true_transition] + p[7][1])
 
 
 

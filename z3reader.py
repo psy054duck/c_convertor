@@ -37,9 +37,12 @@ def main(filename, timeout):
     # print(solver.check())
     # print(solver.model())
     res = basic_solver.check()
-    # print(res)
+    if DEBUG:
+        print(res)
     if res == z3.unknown:
         res = lemma_solver.check()
+    if DEBUG:
+        print(res)
 
     if res == z3.sat:
         exit(-1)

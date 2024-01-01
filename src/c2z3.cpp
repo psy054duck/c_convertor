@@ -10,6 +10,7 @@ class UnimplementedOperationException: public std::runtime_error {
         UnimplementedOperationException(const char* err): runtime_error(err) {}
 };
 
+
 std::string get_validation_type_name(validation_type ty) {
     std::string res;
     switch (ty) {
@@ -434,9 +435,9 @@ z3::expr c2z3::phi2ite_header(PHINode* phi) {
         z3::expr res = express_v_as_header_phis(*(phi->incoming_values().end() - 1));
         for (int i = phi->getNumIncomingValues() - 2; i >= 0; i--) {
             BasicBlock* incoming_bb = phi->getIncomingBlock(i);
-            pc_type path_cond_merge2incoming = path_condition_from_to(branch_bb, incoming_bb);
-            pc_type path_cond_incoming2merge = path_condition_from_to_straight(incoming_bb, phi_bb);
-            z3::expr cur_cond = path_cond_merge2incoming.first && path_cond_incoming2merge.first;
+            z3::expr path_cond_merge2incoming = phi2ite_find_path_condition(branch_bb, incoming_bb);
+            z3::expr path_cond_incoming2merge = phi2ite_find_path_condition_one_step(incoming_bb, phi_bb);
+            z3::expr cur_cond = path_cond_merge2incoming && path_cond_incoming2merge;
             Value* cur_v = phi->getIncomingValue(i);
             z3::expr cur_v2z3 = express_v_as_header_phis(cur_v);
             res = z3::ite(cur_cond, cur_v2z3, res);
@@ -475,23 +476,62 @@ z3::expr c2z3::phi2ite_header(PHINode* phi) {
     return z3ctx.bool_val(false);
 }
 
-z3::expr c2z3::phi2ite_find_path_condition(PHINode* phi, int incoming_idx, BasicBlock* branch_bb) {
-    BasicBlock* phi_bb = phi->getParent();
-    BasicBlock* cur_bb = phi->getIncomingBlock(incoming_idx);
-
+z3::expr c2z3::phi2ite_find_path_condition(BasicBlock* from, BasicBlock* to) {
+    if (from == to) return z3ctx.bool_val(true);
+    z3::expr res = z3ctx.bool_val(false);
+    LoopInfo& LI = LIs.at(main);
+    Loop* from_loop = LI.getLoopFor(from);
+    Loop* to_loop = LI.getLoopFor(to);
+    for (BasicBlock* bb : predecessors(to)) {
+        BasicBlock* prev_bb = bb;
+        if (!is_back_edge(prev_bb, to)) {
+            if (from_loop && !from_loop->contains(to)) {
+                prev_bb = from_loop->getHeader();
+            }
+            z3::expr pc = phi2ite_find_path_condition(from, prev_bb);
+            z3::expr local_pc = phi2ite_find_path_condition_one_step(prev_bb, to);
+            z3::expr total_pc = pc && local_pc;
+            res = res || total_pc;
+            res = res || total_pc;
+        }
+    }
+    res = res.simplify();
+    z3::tactic t = z3::tactic(z3ctx, "tseitin-cnf") & z3::tactic(z3ctx, "ctx-solver-simplify");
+    z3::goal g(z3ctx);
+    g.add(res);
+    auto qq = t.apply(g);
+    res = z3ctx.bool_val(true);
+    for (int i = 0; i < qq.size(); i++) {
+        res = res && qq[i].as_expr();
+    }
+    return res;
 }
 
 z3::expr c2z3::phi2ite_find_path_condition_one_step(BasicBlock* from, BasicBlock* to) {
+    z3::expr res = z3ctx.bool_val(true);
+    PostDominatorTree& PDT = PDTs.at(main);
+    if (PDT.dominates(to, from)) return res;
     Instruction* term = from->getTerminator();
-    BranchInst* branch = dyn_cast_or_null<BranchInst>(term);
-    bool negated = false;
-    z3::expr cond = z3ctx.bool_val(true);
-    if (branch->isConditional()) {
-        bool negated = branch->getSuccessor(0) == to ? false : true;
-        Value* cond_v = branch->getCondition();
-        cond = express_v_as_header_phis(cond_v);
+    LoopInfo& LI = LIs.at(main);
+    Loop* from_loop = LI.getLoopFor(from);
+    Loop* to_loop = LI.getLoopFor(to);
+    if (from_loop) {
+        SmallVector<BasicBlock*, 10> exit_blocks;
+        from_loop->getExitBlocks(exit_blocks);
+        if (std::find(exit_blocks.begin(), exit_blocks.end(), to) != exit_blocks.end()) {
+            return res;
+        }
     }
-    return negated ? !cond : cond;
+    if (auto CI = dyn_cast_or_null<BranchInst>(term)) {
+        if (CI->isConditional()) {
+            Value* v = CI->getOperand(0);
+            // res.first = use2z3(&u);
+            res = express_v_as_header_phis(v);
+            res = CI->getSuccessor(0) == to ? res : !res;
+        }
+    }
+    res = res.simplify();
+    return res;
 }
 
 z3::expr_vector c2z3::get_pure_args(int dim, bool c) {
@@ -1403,7 +1443,7 @@ validation_type c2z3::check_assert(Use* a, int out_idx) {
 
         // auto val_res = s.check();
         smt_solver solver;
-        auto val_res = solver.check(filename, 60);
+        auto val_res = solver.check(filename, 60*1000);
         switch (val_res) {
             case z3::sat  : res = wrong  ; break;
             case z3::unsat: res = correct; break;
@@ -2108,7 +2148,6 @@ bool c2z3::is_back_edge(BasicBlock* from, BasicBlock* to) {
     bool res = loop && loop->isLoopLatch(from) && loop->getHeader() == to;
     return res;
 }
-
 
 pc_type c2z3::path_condition_from_to_straight(BasicBlock* from, BasicBlock* to) {
     pc_type res = {z3ctx.bool_val(true), {}};

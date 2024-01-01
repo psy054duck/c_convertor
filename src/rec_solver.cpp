@@ -261,8 +261,23 @@ std::string rec_solver::z3_infix(z3::expr e) {
     } else if (kind == Z3_OP_DISTINCT) {
         assert(args.size() == 2);
         return args_infix[0] + " != " + args_infix[1];
+    } else if (kind == Z3_OP_AND) {
+        std::string res = args_infix[0];
+        for (int i = 1; i < args_infix.size(); i++)
+            res = res + ", " + args_infix[i];
+        return "And(" + res + ")";
+    } else if (kind == Z3_OP_OR) {
+        std::string res = args_infix[0];
+        for (int i = 1; i < args_infix.size(); i++)
+            res = res + ", " + args_infix[i];
+        return "Or(" + res + ")";
+    } else if (kind == Z3_OP_NOT) {
+        assert(args.size() == 1);
+        return "!" + args_infix[0];
     } else {
-        return e.to_string();
+        std::cout << kind << "\n";
+        abort();
+        // return e.to_string();
         // std::cout << e.to_string() << "\n";
         // assert(false);
     }
