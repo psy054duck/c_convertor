@@ -773,10 +773,6 @@ z3::expr_vector c2z3::inst2z3(Instruction* inst, BasicBlock* prev_bb=nullptr) {
     return forall_res;
 }
 
-rec_ty c2z3::m_header_phi_as_rec(MemoryAccess* m_phi) {
-
-}
-
 z3::expr c2z3::m_as_header_phi(Value* array, MemoryAccess* access, Loop* loop) {
     if (is_m_header_phi(access, loop) || !loop->contains(access->getBlock())) {
         z3::func_decl arr_f = get_array_function(array, access);
@@ -787,7 +783,7 @@ z3::expr c2z3::m_as_header_phi(Value* array, MemoryAccess* access, Loop* loop) {
         z3::expr_vector all_args = merge_vec(arr_args, n_args);
         return arr_f(all_args);
     }
-    
+    throw UnimplementedOperationException("not implemented yet");
 }
 
 bool c2z3::is_m_header_phi(MemoryAccess* access, Loop* loop) {
@@ -1114,6 +1110,8 @@ z3::expr c2z3::loop_expression(Use* u) {
             return e1 - e2;
         } else if (opcode == Instruction::Mul) {
             return e1 * e2;
+        } else {
+            throw UnimplementedOperationException(opcode);
         }
     } else if (auto CI = dyn_cast_or_null<ICmpInst>(v)) {
         auto pred = CI->getPredicate();
@@ -1174,6 +1172,8 @@ z3::expr c2z3::as_loop_expression(Use* u) {
             return e1 - e2;
         } else if (opcode == Instruction::Mul) {
             return e1 * e2;
+        } else {
+            throw UnimplementedOperationException(opcode);
         }
     } else if (auto CI = dyn_cast_or_null<ICmpInst>(v)) {
         auto pred = CI->getPredicate();
@@ -1196,7 +1196,6 @@ z3::expr c2z3::as_loop_expression(Use* u) {
     } else {
         throw UnimplementedOperationException(opcode);
     }
-
 }
 
 z3::expr_vector c2z3::all2z3(Instruction* inst) {
@@ -1932,18 +1931,18 @@ pc_type c2z3::loop_condition(Loop* loop) {
     return {res, local_pc.second};
 }
 
-z3::expr c2z3::path_condition_header2bb(BasicBlock* bb) {
-    LoopInfo& LI = LIs.at(main);
-    Loop* loop = LI.getLoopFor(bb);
-    BasicBlock* header = &main->getEntryBlock();
-    if (loop) header = loop->getHeader();
-    for (BasicBlock* prev_bb : predecessors(bb)) {
-        Loop* prev_loop = LI.getLoopFor(prev_bb);
-        z3::expr prev_cond = path_condition_header2bb(bb);
-        if (prev_loop == loop) {
-        }
-    }
-}
+// z3::expr c2z3::path_condition_header2bb(BasicBlock* bb) {
+//     LoopInfo& LI = LIs.at(main);
+//     Loop* loop = LI.getLoopFor(bb);
+//     BasicBlock* header = &main->getEntryBlock();
+//     if (loop) header = loop->getHeader();
+//     for (BasicBlock* prev_bb : predecessors(bb)) {
+//         Loop* prev_loop = LI.getLoopFor(prev_bb);
+//         z3::expr prev_cond = path_condition_header2bb(bb);
+//         if (prev_loop == loop) {
+//         }
+//     }
+// }
 
 z3::expr c2z3::simple_path_condition_from_to(BasicBlock* from, BasicBlock* to) {
     DominatorTree& DT = DTs.at(main);
