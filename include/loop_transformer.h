@@ -18,6 +18,7 @@ class loop_transformer {
         BasicBlock* get_exiting_for_region(region_ty& region);
         bool is_loop_region(region_ty& region);
         void print_region(region_ty& region);
+        std::pair<BasicBlock*, BasicBlock*> transform_loop_region(region_ty& region);
     private:
         Function* main;
         LoopInfo& LI;

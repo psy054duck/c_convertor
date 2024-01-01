@@ -8,8 +8,8 @@ def main(filename):
     solver.add(f)
     # print(solver)
     # solver.add(z3.Int('N_0_0') == z3.Int('i'))
-    # for e in solver.assertions():
-    #     print(z3.simplify(e))
+    for e in solver.assertions():
+        print(z3.simplify(e))
     # print(solver.check())
     # print(solver.model())
     res = solver.check()

@@ -66,7 +66,13 @@ class ClosedForm:
 
     @classmethod
     def list2z3(cls, l):
-        ret = {utils.to_z3(k): utils.to_z3(v) for k, v in l}
+        # ret = {utils.to_z3(k): utils.to_z3(v) for k, v in l}
+        ret = {}
+        for k, v in l:
+            try:
+                ret[utils.to_z3(k)] = utils.to_z3(v)
+            except:
+                pass
         return ret
         
     
@@ -127,7 +133,7 @@ class ClosedForm:
             numerator, denominator = expr.numerator, expr.denominator
             numerator_z3 = self.sp2z3(numerator)
             denominator_z3 = self.sp2z3(denominator)
-            return numerator_z3/denominator_z3
+            return numerator_z3//denominator_z3
         elif isinstance(expr, sp.Mul):
             args = expr.args
             return reduce(lambda x, y: x*y, [self.sp2z3(arg) for arg in args], 1)
@@ -153,7 +159,7 @@ class ClosedForm:
             #     print(num)
             num_z3 = self.sp2z3(num)
             den_z3 = self.sp2z3(den)
-            res = num_z3/den_z3
+            res = num_z3//den_z3
         else:
             res = self.sp2z3(expr)
         return res

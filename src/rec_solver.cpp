@@ -97,6 +97,7 @@ void rec_solver::set_eqs(rec_ty& eqs) {
 void rec_solver::solve() {
     initial_ty initial_back = rec2file();
     int err = system("python rec_solver.py tmp/test.txt > /dev/null");
+    // int err = system("python rec_solver.py tmp/test.txt");
     if (err) {
         exit(-1);
     }
@@ -239,7 +240,7 @@ std::string rec_solver::z3_infix(z3::expr e) {
     } else if (kind == Z3_OP_MUL) {
         assert(args.size() == 2);
         return args_infix[0] + " * " + args_infix[1];
-    } else if (kind == Z3_OP_DIV) {
+    } else if (kind == Z3_OP_DIV || kind == Z3_OP_IDIV) {
         assert(args.size() == 2);
         return args_infix[0] + " / " + args_infix[1];
     } else if (kind == Z3_OP_LE) {
@@ -332,10 +333,10 @@ void rec_solver::_format() {
     for (auto r : rec_eqs) {
         // std::cout << r.first.to_string() << " = " << r.second.to_string() << "\n";
         auto cur_conds = parse_cond(r.second);
-        for (auto e : cur_conds) {
-            std::cout << e.to_string() << "\n";
-        }
-        std::cout << "***********8\n";
+        // for (auto e : cur_conds) {
+        //     std::cout << e.to_string() << "\n";
+        // }
+        // std::cout << "************\n";
         if (cur_conds.size() > conds.size()) {
             conds = cur_conds;
         }
@@ -513,6 +514,17 @@ z3::expr rec_solver::hoist_ite(z3::expr e) {
             } else {
                 body_true = body_true - hoisted_args[i];
                 body_false = body_false - hoisted_args[i];
+            }
+        }
+    } else if (kind == Z3_OP_IDIV) {
+        for (int i = 0; i < hoisted_args.size(); i++) {
+            if (i == which) continue;
+            if (i < which) {
+                body_true = hoisted_args[i] / body_true;
+                body_false = hoisted_args[i] / body_false;
+            } else {
+                body_true = body_true / hoisted_args[i];
+                body_false = body_false / hoisted_args[i];
             }
         }
     } else {

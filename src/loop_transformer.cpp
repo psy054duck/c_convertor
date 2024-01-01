@@ -4,7 +4,7 @@ bool loop_transformer::transform_function() {
     auto top_level_loops = LI.getTopLevelLoops();
     bool changed = false;
     for (Loop* loop : top_level_loops) {
-        if (transform_loop(loop)) changed = true;
+        if (!loop->isInnermost() && transform_loop(loop)) changed = true;
     }
     return changed;
 }
@@ -24,22 +24,10 @@ bool loop_transformer::transform_loop(Loop* loop) {
 
     std::vector<region_ty> regions;
     while (loop->contains(cur_bb)) {
-        // if (LI.getLoopFor(cur_bb) != loop) {
-        //     assert(LI.isLoopHeader(cur_bb));
-        //     errs() << "Loop region: " << cur_bb->getName() << "\n";
-        //     Loop* sub_loop = LI.getLoopFor(cur_bb);
-        //     cur_bb = sub_loop->getExitBlock();
-        //     assert(cur_bb);
-        // } else {
         region_ty cur_region = get_region(loop, cur_bb);
         regions.push_back(cur_region);
         BasicBlock* front = cur_region.front();
         if (LI.getLoopFor(front) == loop) {
-            // errs() << "basic region: ";
-            // for (auto bb : cur_region) {
-            //     errs() << bb->getName() << " ";
-            // }
-            // errs() << "\n";
             BasicBlock* exiting_bb = cur_region.back();
             cur_bb = exiting_bb->getSingleSuccessor();
             assert(cur_bb);
@@ -66,15 +54,6 @@ std::pair<BasicBlock*, BasicBlock*>
 loop_transformer::transform_regions(std::vector<region_ty>& regions) {
     auto& llvm_ctx = main->getContext();
     return _transform_regions(regions, 0);
-    // if (regions.size() == 2) {
-    //     BasicBlock* guard = BasicBlock::Create(llvm_ctx);
-    // }
-    // for (int i = 0; i < (int) regions.size() - 1; i++) {
-    //     BasicBlock* guard = BasicBlock::Create(llvm_ctx);
-    //     builder.SetInsertPoint(guard);
-    //     auto call = builder.CreateCall(unknown_call);
-    //     auto br = builder.CreateCondBr(call, regions[0][0], regions[1][0]);
-    // }
 }
 
 bool loop_transformer::is_loop_region(region_ty& region) {
@@ -115,6 +94,16 @@ loop_transformer::_transform_regions(std::vector<region_ty>& regions, int start)
     builder.SetInsertPoint(exiting_right_bb);
     builder.CreateBr(merge_bb);
     return {guard, merge_bb};
+}
+
+std::pair<BasicBlock*, BasicBlock*>
+loop_transformer::transform_loop_region(region_ty& region) {
+    assert(is_loop_region(region));
+    BasicBlock* header = region[0];
+    Loop* loop = LI.getLoopFor(header);
+    BasicBlock* latch = loop->getLoopLatch();
+    assert(latch);
+
 }
 
 region_ty loop_transformer::get_region(Loop* loop, BasicBlock* bb) {
