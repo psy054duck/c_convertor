@@ -64,7 +64,7 @@ def solve_rec_expr(transitions, x0, conds, order, n):
     return solve_poly_recurrence_expr(transitions, x0, conds, order, n)
 
 # def solve_poly_recurrence_expr(A, x0, conds, order, n):
-def solve_poly_recurrence_expr(transitions, x0, conds, order, n, degr=2):
+def solve_poly_recurrence_expr(transitions, x0, conds, order, n, degr=3):
     X = [var for var in order if str(var) != 'constant']
     # transitions = matrix2transitions(A, order)
     ks_polynomials = vec_space_d(X, x0, transitions, degr)

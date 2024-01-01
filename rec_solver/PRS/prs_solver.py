@@ -116,7 +116,8 @@ def solve_recurrence_expr(recurrence):
     # if all(is_linear_transition(trans) for trans in sp_transitions):
     #     A = [trans2matrix(tran, variables) for tran in sp_transitions]
     if all(is_poly_transition(trans) for trans in sp_transitions):
-        return solve_rec_expr(sp_transitions, x0, conds, variables, index)
+        res = solve_rec_expr(sp_transitions, x0, conds, variables, index)
+        return res
     else:
         raise Exception('Non-poly Case Not Yet Implemented')
 
