@@ -141,6 +141,9 @@ class c2z3 {
         closed_form_ty solve_loop(Loop* loop);
         
         z3::expr phi2ite_header(PHINode* phi);
+        std::pair<z3::expr, z3::expr> _phi2ite_header(PHINode* phi, BasicBlock* merge_bb);
+        z3::expr phi2ite_find_path_condition(PHINode* phi, int incoming_idx, BasicBlock* branch_bb);
+        z3::expr phi2ite_find_path_condition_one_step(BasicBlock* from, BasicBlock* to);
 
         bool is_back_edge(BasicBlock* from, BasicBlock* to);
 
@@ -217,6 +220,7 @@ class c2z3 {
         std::map<Value*, z3::func_decl> array_z3_func;
         std::map<Value*, BasicBlock*> array_def_block;
         Value* _find_def_chain_in_block(Value* v, BasicBlock* bb, std::set<Value*>& visited_v);
+        BasicBlock* find_nearest_common_dominator_phi(DominatorTree& DT, PHINode* phi);
 };
 
 #endif

@@ -409,48 +409,89 @@ z3::expr c2z3::_express_v_as_header_phis(Value* v, Loop* inner_loop) {
     // return final_res;
 }
 
+BasicBlock* c2z3::find_nearest_common_dominator_phi(DominatorTree& DT, PHINode* phi) {
+    BasicBlock* branch_bb = phi->getIncomingBlock(0);
+    for (int i = 1; i < phi->getNumIncomingValues(); i++) {
+        BasicBlock* cur_bb = phi->getIncomingBlock(i);
+        branch_bb = DT.findNearestCommonDominator(branch_bb, cur_bb);
+    }
+    return branch_bb;
+}
+
 z3::expr c2z3::phi2ite_header(PHINode* phi) {
     if (phi->getNumIncomingValues() == 1) {
         return express_v_as_header_phis(phi->getIncomingValue(0));
     }
     DominatorTree& DT = DTs.at(main);
     PostDominatorTree& PDT = PDTs.at(main);
-    assert(phi->getNumIncomingValues() == 2);
+    assert(phi->getNumIncomingValues() >= 2);
     BasicBlock* bb0 = phi->getIncomingBlock(0);
     BasicBlock* bb1 = phi->getIncomingBlock(1);
-    BasicBlock* merge_bb = DT.findNearestCommonDominator(bb0, bb1);
-    BasicBlock* curB = phi->getParent();
+    BasicBlock* branch_bb = find_nearest_common_dominator_phi(DT, phi); // DT.findNearestCommonDominator(bb0, bb1);
+    BasicBlock* phi_bb = phi->getParent();
     LoopInfo& LI = LIs.at(main);
-    int dim = LI.getLoopDepth(curB);
-    if (PDT.dominates(curB, merge_bb)) {
-        const Instruction* term = merge_bb->getTerminator();
-        const BranchInst* branch = dyn_cast<BranchInst>(term);
-        if (branch && branch->isConditional()) {
-            Value* condV = branch->getCondition();
-            const BasicBlock* true_b = bb0;
-            const BasicBlock* false_b = bb1;
-            if (DT.dominates(branch->getSuccessor(0), bb0) || DT.dominates(branch->getSuccessor(1), bb1)) {
-                true_b = bb0;
-                false_b = bb1;
-            } else {
-                true_b = bb1;
-                false_b = bb0;
-            }
-            int true_idx = phi->getBasicBlockIndex(true_b);
-            int false_idx = phi->getBasicBlockIndex(false_b);
-            // z3::expr cond = v2z3(condV, dim, false);
-            z3::expr cond = express_v_as_header_phis(condV);
-            z3::expr v0 = express_v_as_header_phis(phi->getIncomingValue(true_idx));
-            z3::expr v1 = express_v_as_header_phis(phi->getIncomingValue(false_idx));
-            // z3::expr v0 = v2z3(phi->getIncomingValue(true_idx), dim, false);
-            // z3::expr v1 = v2z3(phi->getIncomingValue(false_idx), dim, false);
-            return z3::ite(cond, v0, v1);
-            // Value* new_select = builder.CreateSelect(condV, phi->getIncomingValue(true_idx), phi->getIncomingValue(false_idx));
-            // new_select->setName(v->getName());
-            // inst = dyn_cast<Instruction>(new_select);
+    if (PDT.dominates(phi_bb, branch_bb)) {
+        z3::expr res = express_v_as_header_phis(*(phi->incoming_values().end() - 1));
+        for (int i = phi->getNumIncomingValues() - 2; i >= 0; i--) {
+            BasicBlock* incoming_bb = phi->getIncomingBlock(i);
+            pc_type path_cond_merge2incoming = path_condition_from_to(branch_bb, incoming_bb);
+            pc_type path_cond_incoming2merge = path_condition_from_to_straight(incoming_bb, phi_bb);
+            z3::expr cur_cond = path_cond_merge2incoming.first && path_cond_incoming2merge.first;
+            Value* cur_v = phi->getIncomingValue(i);
+            z3::expr cur_v2z3 = express_v_as_header_phis(cur_v);
+            res = z3::ite(cur_cond, cur_v2z3, res);
         }
+        return res;
     }
+    // int dim = LI.getLoopDepth(curB);
+    // if (PDT.dominates(curB, merge_bb)) {
+    //     const Instruction* term = merge_bb->getTerminator();
+    //     const BranchInst* branch = dyn_cast<BranchInst>(term);
+    //     if (branch && branch->isConditional()) {
+    //         Value* condV = branch->getCondition();
+    //         const BasicBlock* true_b = bb0;
+    //         const BasicBlock* false_b = bb1;
+    //         if (DT.dominates(branch->getSuccessor(0), bb0) || DT.dominates(branch->getSuccessor(1), bb1)) {
+    //             true_b = bb0;
+    //             false_b = bb1;
+    //         } else {
+    //             true_b = bb1;
+    //             false_b = bb0;
+    //         }
+    //         int true_idx = phi->getBasicBlockIndex(true_b);
+    //         int false_idx = phi->getBasicBlockIndex(false_b);
+    //         // z3::expr cond = v2z3(condV, dim, false);
+    //         z3::expr cond = express_v_as_header_phis(condV);
+    //         z3::expr v0 = express_v_as_header_phis(phi->getIncomingValue(true_idx));
+    //         z3::expr v1 = express_v_as_header_phis(phi->getIncomingValue(false_idx));
+    //         // z3::expr v0 = v2z3(phi->getIncomingValue(true_idx), dim, false);
+    //         // z3::expr v1 = v2z3(phi->getIncomingValue(false_idx), dim, false);
+    //         return z3::ite(cond, v0, v1);
+    //         // Value* new_select = builder.CreateSelect(condV, phi->getIncomingValue(true_idx), phi->getIncomingValue(false_idx));
+    //         // new_select->setName(v->getName());
+    //         // inst = dyn_cast<Instruction>(new_select);
+    //     }
+    // }
     return z3ctx.bool_val(false);
+}
+
+z3::expr c2z3::phi2ite_find_path_condition(PHINode* phi, int incoming_idx, BasicBlock* branch_bb) {
+    BasicBlock* phi_bb = phi->getParent();
+    BasicBlock* cur_bb = phi->getIncomingBlock(incoming_idx);
+
+}
+
+z3::expr c2z3::phi2ite_find_path_condition_one_step(BasicBlock* from, BasicBlock* to) {
+    Instruction* term = from->getTerminator();
+    BranchInst* branch = dyn_cast_or_null<BranchInst>(term);
+    bool negated = false;
+    z3::expr cond = z3ctx.bool_val(true);
+    if (branch->isConditional()) {
+        bool negated = branch->getSuccessor(0) == to ? false : true;
+        Value* cond_v = branch->getCondition();
+        cond = express_v_as_header_phis(cond_v);
+    }
+    return negated ? !cond : cond;
 }
 
 z3::expr_vector c2z3::get_pure_args(int dim, bool c) {
