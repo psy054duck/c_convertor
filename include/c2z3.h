@@ -57,6 +57,7 @@ typedef std::vector<Value*> value_vector;
 typedef std::pair<z3::expr, std::set<Value*>> pc_type;
 typedef std::vector<BasicBlock*> path_ty;
 typedef std::pair<Value*, std::vector<Use*>> array_access_ty;
+typedef std::pair<BasicBlock*, BasicBlock*> edge_ty;
 
 typedef enum {
     correct,
@@ -84,6 +85,7 @@ class c2z3 {
         z3::expr path_condition_header2bb(BasicBlock* bb);
         z3::expr simple_path_condition_from_to(BasicBlock* from, BasicBlock* to);
         z3::expr path_condition_one_stride(BasicBlock* from, BasicBlock* To);
+        z3::expr condition_from_path(path_ty& path);
 
         pc_type loop_condition(Loop* loop);
 
@@ -98,6 +100,9 @@ class c2z3 {
 
         z3::expr express_v_as_header_phis(Value* v);
         z3::expr _express_v_as_header_phis(Value* v, Loop* target_loop);
+
+        z3::expr express_v_as_header_phis(Value* v, path_ty& path);
+        z3::expr _express_v_as_header_phis(Value* v, path_ty& path);
 
         z3::func_decl get_z3_function(Value* v, int dim = 0);
         z3::func_decl get_z3_function(Use* u);
@@ -135,6 +140,7 @@ class c2z3 {
         bool is_header_phi(Value* v, Loop* loop);
 
         rec_ty header_phi_as_rec(PHINode* phi);
+        rec_ty header_phi_as_rec_nested(PHINode* phi);
         initial_ty header_phi_as_initial(PHINode* phi);
         rec_ty loop2rec(Loop* loop);
         initial_ty loop2initial(Loop* loop);
@@ -147,12 +153,15 @@ class c2z3 {
         z3::expr phi2ite_find_path_condition_one_step(BasicBlock* from, BasicBlock* to);
 
         bool is_back_edge(BasicBlock* from, BasicBlock* to);
+        bool is_back_edge_loop(Loop* loop, BasicBlock* from, BasicBlock* to);
 
         void test_loop_condition();
 
         void get_loop_idx();
 
         std::vector<path_ty> get_paths_from_to(BasicBlock* from, BasicBlock* to);
+        std::vector<path_ty> get_paths_from_to_loop(Loop* loop);
+        std::vector<path_ty> _get_paths_from_to_loop(Loop* loop, BasicBlock* cur_bb, std::vector<edge_ty> visited_edges);
 
         void print_path(path_ty);
         // Value* get_array_from_load_store(Value* v);

@@ -64,6 +64,16 @@ c2z3::c2z3(std::unique_ptr<Module> &mod): m(std::move(mod)), rec_s(z3ctx), expre
 
     // LoopInfo& LI = LIs.at(main);
     // auto all_loops = LI.getLoopsInPreorder();
+    // for (Loop* loop : all_loops) {
+    //     if (loop->getLoopDepth() == 1) {
+    //         BasicBlock* header = loop->getHeader();
+    //         BasicBlock* latch = loop->getLoopLatch();
+    //         std::vector<path_ty> paths = get_paths_from_to_loop(loop);
+    //         for (auto p : paths) {
+    //             print_path(p);
+    //         }
+    //     }
+    // }
 
     // loop_transformer transformer(main, LI, unknown_fn);
     // transformer.transform_function();
@@ -552,11 +562,137 @@ z3::expr_vector c2z3::get_pure_args(int dim, bool c) {
 rec_ty c2z3::loop2rec(Loop* loop) {
     BasicBlock* header = loop->getHeader();
     rec_ty total_recs;
-    for (auto& phi : header->phis()) {
-        rec_ty phi_rec = header_phi_as_rec(&phi);
-        total_recs.insert(phi_rec.begin(), phi_rec.end());
+    if (loop->isInnermost()) {
+        for (auto& phi : header->phis()) {
+            rec_ty phi_rec = header_phi_as_rec(&phi);
+            total_recs.insert(phi_rec.begin(), phi_rec.end());
+        }
+        return total_recs;
+    } else {
+        // auto paths = get_paths_from_to_loop(loop);
+        for (auto& phi : header->phis()) {
+            rec_ty phi_rec = header_phi_as_rec_nested(&phi);
+        }
     }
-    return total_recs;
+}
+
+rec_ty
+c2z3::header_phi_as_rec_nested(PHINode* phi) {
+    LoopInfo& LI = LIs.at(main);
+    Loop* loop = LI.getLoopFor(phi->getParent());
+    std::vector<path_ty> paths = get_paths_from_to_loop(loop);
+}
+
+z3::expr c2z3::express_v_as_header_phis(Value* v, path_ty& path) {
+    if (auto CI = dyn_cast_or_null<ConstantInt>(v)) {
+        int svalue = CI->getSExtValue();
+        return is_bool(v) ? z3ctx.bool_val(svalue) : z3ctx.int_val(svalue);
+    }
+    auto inst = dyn_cast_or_null<Instruction>(v);
+    LoopInfo& LI = LIs.at(main);
+    Loop* loop = LI.getLoopFor(inst->getParent());
+    return _express_v_as_header_phis(v, loop);
+}
+
+z3::expr c2z3::_express_v_as_header_phis(Value* v, path_ty& path) {
+    if (auto CI = dyn_cast_or_null<ConstantInt>(v)) {
+        int svalue = CI->getSExtValue();
+        return is_bool(v) ? z3ctx.bool_val(svalue) : z3ctx.int_val(svalue);
+    }
+    auto inst = dyn_cast_or_null<Instruction>(v);
+    LoopInfo& LI = LIs.at(main);
+    BasicBlock* bb = inst->getParent();
+    Loop* loop = LI.getLoopFor(bb);
+    int dim = LI.getLoopDepth(bb);
+    if (loop != target_loop) {
+        return v2z3(v);
+        // return v2z3(v, dim, false);
+    }
+    if (bb == loop->getHeader() && isa<PHINode>(v)) {
+        return v2z3(v);
+        // return v2z3(v, dim, false);
+    }
+    z3::func_decl f = get_z3_function(v);
+    z3::expr_vector args = get_args(0, false, false, false);
+    z3::expr_vector res(z3ctx);
+    int opcode = inst->getOpcode();
+    if (inst->isBinaryOp()) {
+        Value* op0 = inst->getOperand(0);
+        Value* op1 = inst->getOperand(1);
+        z3::expr z3op0 = _express_v_as_header_phis(op0, target_loop);
+        z3::expr z3op1 = _express_v_as_header_phis(op1, target_loop);
+        if (opcode == Instruction::Add) {
+            return z3op0 + z3op1;
+        } else if (opcode == Instruction::Sub) {
+            return z3op0 - z3op1;
+        } else if (opcode == Instruction::Mul) {
+            return z3op0 * z3op1;
+        } else if (opcode == Instruction::SDiv || opcode == Instruction::UDiv) {
+            return z3op0 / z3op1;
+        } else if (opcode == Instruction::SRem || opcode == Instruction::URem) {
+            return z3op0 % z3op1;
+        } else {
+            throw UnimplementedOperationException(opcode);
+        }
+    } else if (opcode == Instruction::ICmp) {
+        auto CI = dyn_cast<ICmpInst>(inst);
+        auto pred = CI->getPredicate();
+        Value* op0 = inst->getOperand(0);
+        Value* op1 = inst->getOperand(1);
+        z3::expr z3op0 = _express_v_as_header_phis(op0, target_loop);
+        z3::expr z3op1 = _express_v_as_header_phis(op1, target_loop);
+        if (pred == ICmpInst::ICMP_EQ) {
+            return z3op0 == z3op1;
+        } else if (pred == ICmpInst::ICMP_NE) {
+            return z3op0 != z3op1;
+        } else if (ICmpInst::isLT(pred)) {
+            return z3op0 < z3op1;
+        } else if (ICmpInst::isLE(pred)) {
+            return z3op0 <= z3op1;
+        } else if (ICmpInst::isGT(pred)) {
+            return z3op0 > z3op1;
+        } else if (ICmpInst::isGE(pred)) {
+            return z3op0 >= z3op1;
+        } else {
+            throw UnimplementedOperationException(opcode);
+        }
+    } else if (auto CI = dyn_cast_or_null<SelectInst>(inst)) {
+        z3::expr cond = _express_v_as_header_phis(CI->getOperand(0), target_loop);
+        z3::expr first = _express_v_as_header_phis(CI->getOperand(1), target_loop);
+        z3::expr second = _express_v_as_header_phis(CI->getOperand(2), target_loop);
+        return z3::ite(cond, first, second);
+    } else if (auto CI = dyn_cast_or_null<CallInst>(inst)) {
+        // all calls are treated as unknown values;
+        return z3ctx.int_const("unknown");
+    } else if (auto CI = dyn_cast_or_null<PHINode>(inst)) {
+        z3::expr ite = phi2ite_header(CI);
+        if (ite) {
+            return ite;
+        } else {
+            throw UnimplementedOperationException(opcode);
+        }
+    } else if (auto CI = dyn_cast_or_null<SExtInst>(inst)) {
+        return _express_v_as_header_phis(CI->getOperand(0), target_loop);
+    } else if (auto CI = dyn_cast_or_null<ZExtInst>(inst)) {
+        return _express_v_as_header_phis(CI->getOperand(0), target_loop);
+    } else if (auto CI = dyn_cast_or_null<LoadInst>(inst)) {
+        z3::func_decl arr_f = get_array_function(inst);
+        array_access_ty access = get_array_access_from_load_store(CI);
+        z3::expr_vector indices(z3ctx);
+        for (auto u : access.second) {
+            Value* v = u->get();
+            indices.push_back(_express_v_as_header_phis(v, target_loop));
+        }
+        z3::expr_vector arr_n_args = merge_vec(indices, args);
+        return arr_f(arr_n_args);
+    } else {
+        throw UnimplementedOperationException(opcode);
+    }
+    // z3::expr final_res = z3ctx.bool_val(true);
+    // for (auto e : res) {
+    //     final_res = final_res && e;
+    // }
+    // return final_res;
 }
 
 initial_ty c2z3::loop2initial(Loop* loop) {
@@ -1740,7 +1876,10 @@ std::vector<path_ty> c2z3::get_paths_from_to(BasicBlock* from, BasicBlock* to) {
     }
     for (auto bb = pred_begin(to); bb != pred_end(to); bb++) {
         BasicBlock* cur_bb = *bb;
-        if (is_back_edge(cur_bb, to)) continue;
+        if (is_back_edge(cur_bb, to)) {
+            // errs() << cur_bb->getName() << ' ' << to->getName() << "\n";
+            continue;
+        }
         Loop *loop = LI.getLoopFor(cur_bb);
         // if (loop) cur_bb =loop->getHeader();
         if (loop) cur_bb = loop->getOutermostLoop()->getHeader();
@@ -1751,6 +1890,49 @@ std::vector<path_ty> c2z3::get_paths_from_to(BasicBlock* from, BasicBlock* to) {
         }
     }
     return res;
+}
+
+std::vector<path_ty>
+c2z3::get_paths_from_to_loop(Loop* loop) {
+    BasicBlock* header = loop->getHeader();
+    auto res = _get_paths_from_to_loop(loop, header, {});
+    return res;
+}
+
+std::vector<path_ty>
+c2z3::_get_paths_from_to_loop(Loop* loop, BasicBlock* cur_bb, std::vector<edge_ty> visited_edges) {
+    BasicBlock* latch = loop->getLoopLatch();
+    // for (auto edge : visited_edges) {
+    //     errs() << edge.first->getName() << " " << edge.second->getName() << "\n";
+    // }
+    if (cur_bb == loop->getHeader() && visited_edges.size() != 0) {
+        return {};
+        // path_ty p;
+        // p.push_back(cur_bb);
+        // return {p};
+    }
+    std::vector<path_ty> res;
+    for (auto succ : successors(cur_bb)) {
+        if (!loop->contains(succ) || std::find(visited_edges.begin(), visited_edges.end(), std::make_pair(cur_bb, succ)) != visited_edges.end()) continue;
+        std::vector<edge_ty> cur_visited = visited_edges;
+        cur_visited.push_back(std::make_pair(cur_bb, succ));
+        std::vector<path_ty> post_path = _get_paths_from_to_loop(loop, succ, cur_visited);
+        if (post_path.size() == 0) {
+            path_ty p = {cur_bb};
+            res.push_back(p);
+        } else {
+            for (auto p : post_path) {
+                p.insert(p.begin(), cur_bb);
+                res.push_back(p);
+            }
+        }
+    }
+    return res;
+}
+
+bool
+c2z3::is_back_edge_loop(Loop* loop, BasicBlock* from, BasicBlock* to) {
+    return loop->getHeader() == to && loop->getLoopLatch() == from;
 }
 
 z3::func_decl c2z3::get_z3_function(Use* u) {
@@ -2156,8 +2338,8 @@ pc_type c2z3::pc_or(const pc_type& a, const pc_type& b) {
 
 bool c2z3::is_back_edge(BasicBlock* from, BasicBlock* to) {
     LoopInfo& LI = LIs.at(main);
-    Loop* loop = LI.getLoopFor(from);
-    bool res = loop && loop->isLoopLatch(from) && loop->getHeader() == to;
+    Loop* loop = LI.getLoopFor(to);
+    bool res = loop && loop->contains(from) && loop->isLoopLatch(from) && loop->getHeader() == to;
     return res;
 }
 
