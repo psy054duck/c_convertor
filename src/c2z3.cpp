@@ -61,7 +61,6 @@ c2z3::c2z3(std::unique_ptr<Module> &mod): m(std::move(mod)), rec_s(z3ctx), expre
     // MPM.addPass(createModuleToFunctionPassAdaptor(SROAPass(SROAOptions::ModifyCFG)));
     // MPM.addPass(createModuleToFunctionPassAdaptor(LCSSAPass()));
     // MPM.addPass(createModuleToFunctionPassAdaptor(SimplifyCFGPass()));
-
     // // MPM.addPass(createModuleToFunctionPassAdaptor(createFunctionToLoopPassAdaptor(LoopRotatePass())));
     // MPM.addPass(createModuleToFunctionPassAdaptor(LoopSimplifyPass()));
     // // MPM.addPass(createModuleToFunctionPassAdaptor(LoopFusePass()));
