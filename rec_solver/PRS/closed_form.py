@@ -61,7 +61,10 @@ def matrix2transitions(A, order):
     return transitions
 
 def solve_rec_expr(transitions, x0, conds, order, n):
-    return solve_poly_recurrence_expr(transitions, x0, conds, order, n)
+    res = solve_poly_recurrence_expr(transitions, x0, conds, order, n, degr=2)
+    if len(res) == 0:
+        res = solve_poly_recurrence_expr(transitions, x0, conds, order, n, degr=3)
+    return res
 
 # def solve_poly_recurrence_expr(A, x0, conds, order, n):
 def solve_poly_recurrence_expr(transitions, x0, conds, order, n, degr=3):
@@ -73,7 +76,7 @@ def solve_poly_recurrence_expr(transitions, x0, conds, order, n, degr=3):
     for k, polynomials in ks_polynomials:
         for p in polynomials:
             if p == sp.Integer(1): continue
-            res_p = solve_poly_rec(k, p, transitions, inits)
+            res_p = solve_poly_rec(k, p, transitions, n, inits)
             res.append(res_p)
     return res
 
@@ -154,8 +157,8 @@ def vec_space_d(X, inits, transitions, d):
         ret.append((sp.Integer(1), basis_instances))
     return ret
 
-def solve_poly_rec(k, p, transitions, inits):
-    _n = sp.Symbol('n', integer=True)
+def solve_poly_rec(k, p, transitions, _n, inits):
+    # _n = sp.Symbol('n', integer=True)
     if k != 1:
         if k == 0:
             if sp.simplify(p.subs(inits, simultaneous=True) == 0):

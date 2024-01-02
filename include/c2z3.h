@@ -54,7 +54,7 @@
 using namespace llvm;
 typedef std::vector<Use*> use_vector;
 typedef std::vector<Value*> value_vector;
-typedef std::pair<z3::expr, std::set<Use*>> pc_type;
+typedef std::pair<z3::expr, std::set<Value*>> pc_type;
 typedef std::vector<BasicBlock*> path_ty;
 typedef std::pair<Value*, std::vector<Use*>> array_access_ty;
 
@@ -77,7 +77,8 @@ class c2z3 {
         z3::expr_vector inst2z3(Instruction* inst, BasicBlock* prev_bb);
         z3::expr_vector all2z3(Instruction* inst);
         z3::expr use2z3(Use* u);
-        z3::expr v2z3(Value* v, int dim, int plus);
+        z3::expr v2z3(Value* v, int dim = 0, int plus = 0);
+        // z3::expr v2z3(Value* v);
         std::pair<Use*, bool> path_condition_b2b(BasicBlock* from, BasicBlock* to);
         std::set<Use*> get_bb_conditions(BasicBlock* bb);
         z3::expr path_condition_header2bb(BasicBlock* bb);
@@ -96,16 +97,16 @@ class c2z3 {
         pc_type pc_or(const pc_type& a, const pc_type& b);
 
         z3::expr express_v_as_header_phis(Value* v);
-        z3::expr _express_v_as_header_phis(Value* v, Loop* inner_loop);
+        z3::expr _express_v_as_header_phis(Value* v, Loop* target_loop);
 
-        z3::func_decl get_z3_function(Value* v, int dim);
+        z3::func_decl get_z3_function(Value* v, int dim = 0);
         z3::func_decl get_z3_function(Use* u);
 
         z3::func_decl get_array_function(Value* v);
         z3::func_decl get_array_function(Value* v, int mem_id, int num_args);
         z3::func_decl get_array_function(Value* v, MemoryAccess* access);
 
-        z3::expr_vector get_args(int dim, bool c, bool plus, bool prefix, Loop* loop=nullptr);
+        z3::expr_vector get_args(int dim, bool c = false, bool plus = false, bool prefix = false, Loop* loop=nullptr);
         z3::expr_vector get_args_0(int dim);
         z3::expr_vector get_args_N(Loop* loop);
         z3::expr_vector get_arr_args(int arity);
@@ -137,8 +138,8 @@ class c2z3 {
         initial_ty header_phi_as_initial(PHINode* phi);
         rec_ty loop2rec(Loop* loop);
         initial_ty loop2initial(Loop* loop);
-        z3::expr loop_bound(Loop* loop);
-        closed_form_ty solve_loop(Loop* loop);
+        z3::expr loop_bound(Loop* loop, rec_solver& rec_s);
+        std::pair<closed_form_ty, rec_solver> solve_loop(Loop* loop);
         
         z3::expr phi2ite_header(PHINode* phi);
         std::pair<z3::expr, z3::expr> _phi2ite_header(PHINode* phi, BasicBlock* merge_bb);
@@ -207,6 +208,7 @@ class c2z3 {
         FunctionAnalysisManager FAM;
         CGSCCAnalysisManager CGAM;
         ModuleAnalysisManager MAM;
+
         std::map<BasicBlock*, z3::expr> path_conditions;
         std::map<BasicBlock*, std::set<Use*>> bb_conditions;
         std::set<Instruction*> visited_inst;

@@ -5,9 +5,9 @@ import z3
 import fire
 
 
-def main(filename):
+def main(filename, inv_var):
     out_filename = "tmp/closed.smt2"
-    closed = solve_file(filename)
+    closed = solve_file(filename, inv_var)
     solver = z3.Solver()
     for k, e in closed.items():
         solver.add(k == e)

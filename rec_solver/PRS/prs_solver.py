@@ -62,8 +62,8 @@ def solve_str(recurrence: str):
         return None
     return res, variables, index, end - start
 
-def solve_sym_str(recurrence: str):
-    cond, x0, str_transitions, variables, index = parse(recurrence)
+def solve_sym_str(recurrence: str, index):
+    cond, x0, str_transitions, variables = parse(recurrence)
     if any([c is NondetCondition for c in cond]):
         raise Exception('Contains Nondterministic Branches')
     sp_transitions = [{sp.Symbol(v): e for v, e in trans.items()} for trans in str_transitions]
@@ -110,22 +110,22 @@ def transition_layers(transition, index):
         ret.append({v: transition[v] for v in c})
     return ret
 
-def solve_recurrence_expr(recurrence):
-    conds, x0, str_transitions, variables, index = parse(recurrence)
+def solve_recurrence_expr(recurrence, ind_var):
+    conds, x0, str_transitions, variables = parse(recurrence)
     sp_transitions = [{sp.Symbol(v): e for v, e in trans.items()} for trans in str_transitions]
     # if all(is_linear_transition(trans) for trans in sp_transitions):
     #     A = [trans2matrix(tran, variables) for tran in sp_transitions]
     if all(is_poly_transition(trans) for trans in sp_transitions):
-        res = solve_rec_expr(sp_transitions, x0, conds, variables, index)
+        res = solve_rec_expr(sp_transitions, x0, conds, variables, ind_var)
         return res
     else:
         raise Exception('Non-poly Case Not Yet Implemented')
 
-def solve_sym(filename):
+def solve_sym(filename, ind_var):
     with open(filename) as fp:
         recurrence = fp.read()
         try:
-            res = solve_sym_str(recurrence)
+            res = solve_sym_str(recurrence, ind_var)
         except:
-            res = solve_recurrence_expr(recurrence)
+            res = solve_recurrence_expr(recurrence, ind_var)
         return res

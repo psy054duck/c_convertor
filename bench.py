@@ -2,7 +2,7 @@ import os
 from driver import run  
 
 def main():
-    benchmark_dir = 'benchmark/sv-benchmarks-main-c-nla-digbench/c/nla-digbench'
+    benchmark_dir = 'benchmark/sv-benchmarks-main-c-nla-digbench/c/nla-split'
     filenames = sorted(os.listdir(benchmark_dir))
     max_len = max([len(filename) for filename in filenames])
     tot = 0

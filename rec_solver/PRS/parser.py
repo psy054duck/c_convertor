@@ -20,7 +20,7 @@ precedence = (
  )
 
 PREFIX = ''
-INDEX = sp.Symbol(PREFIX + 'n', integer=True)
+# INDEX = sp.Symbol(PREFIX + 'n', integer=True)
 
 variables = []
 
@@ -45,7 +45,7 @@ def p_program(p):
         x0[i] = p[1][var]
     x0[-1] = 1
     # p[0] = (cond, x0, A, [sp.Symbol(var) for var in variables], INDEX)
-    p[0] = (cond, x0, maps, [sp.Symbol(var) for var in variables], INDEX)
+    p[0] = (cond, x0, maps, [sp.Symbol(var) for var in variables])
 
 def p_initializations1(p):
     '''initializations : initialization initializations'''

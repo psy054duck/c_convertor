@@ -38,18 +38,19 @@ class rec_solver {
         void apply_initial_values();
         void print_recs();
         void _format();
-        initial_ty rec2file();
-        initial_ty _rec2file(std::ofstream& out);
+        void rec2file();
+        void _rec2file(std::ofstream& out);
         std::vector<z3::expr> parse_expr(z3::expr e);
         std::vector<z3::expr> parse_cond(z3::expr);
         bool is_ite_free(z3::expr e);
         bool implies(z3::expr e1, z3::expr e2);
         std::string z3_infix(z3::expr e);
-        void file2z3(initial_ty initial_back);
-        void _file2z3(const std::string& filename, initial_ty initial_back);
+        void file2z3();
+        void _file2z3(const std::string& filename);
         void print_res();
         void solve();
         // std::pair<std::vector<z3::expr>, std::vector<z3::expr>> rec_solver::parse_expr_(z3::expr e);
         z3::expr hoist_ite(z3::expr e);
+        z3::expr get_ind_var() const { return ind_var; }
 };
 #endif

@@ -69,7 +69,8 @@ reserved = {
 tokens = tuple(list(tokens) + list(set(reserved.values())))
 
 def t_ID(t):
-    r'[a-zA-Z_][a-zA-Z_0-9]*'
+    # r'[a-zA-Z_][a-zA-Z_0-9]*'
+    r'[a-zA-Z$._][a-zA-Z$._0-9]*'
     t.type = reserved.get(t.value,'ID')    # Check for reserved words
     return t
 

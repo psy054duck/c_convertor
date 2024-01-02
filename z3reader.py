@@ -24,8 +24,8 @@ def main(filename, timeout):
     # solver = z3.Then('ctx-solver-simplify', 'smt').solver()
     basic_solver = z3.Solver()
     lemma_solver = z3.Solver()
-    basic_solver.set('timeout', int(timeout)//2)
-    lemma_solver.set('timeout', int(timeout)//2)
+    basic_solver.set(timeout=int(timeout)//2)
+    lemma_solver.set(timeout=int(timeout)//2)
     basic_solver.add(f)
     lemma_solver.add(f)
     add_lemma(lemma_solver)
@@ -37,6 +37,7 @@ def main(filename, timeout):
     # print(solver.check())
     # print(solver.model())
     res = basic_solver.check()
+
     if DEBUG:
         print(res)
     if res == z3.unknown:

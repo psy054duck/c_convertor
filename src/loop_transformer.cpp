@@ -4,7 +4,9 @@ bool loop_transformer::transform_function() {
     auto top_level_loops = LI.getTopLevelLoops();
     bool changed = false;
     for (Loop* loop : top_level_loops) {
-        if (!loop->isInnermost() && transform_loop(loop)) changed = true;
+        if (!loop->isInnermost()) {
+            changed = transform_loop(loop);
+        }
     }
     return changed;
 }
@@ -75,20 +77,27 @@ loop_transformer::_transform_regions(std::vector<region_ty>& regions, int start)
     builder.SetInsertPoint(guard);
     auto call = builder.CreateCall(unknown_call);
     auto cmp = builder.CreateCmp(CmpInst::Predicate::ICMP_EQ, call, ConstantInt::getSigned(call->getType(), 0));
-    BasicBlock* merge_bb = BasicBlock::Create(llvm_ctx, "loop.transform.merge", main);
-    BasicBlock* right_first_bb = regions[start + 1][0];
+    BasicBlock* left_first_bb = regions[start].front();
+    BasicBlock* right_first_bb = regions[start + 1].front();
     BasicBlock* exiting_left_bb = get_exiting_for_region(regions[start]);
     BasicBlock* exiting_right_bb = get_exiting_for_region(regions[start + 1]);
+    if (is_loop_region(regions[start])) {
+        auto left_entry_exiting = transform_loop_region(regions[start]);
+        left_first_bb = left_entry_exiting.first;
+        exiting_left_bb = left_entry_exiting.second;
+    }
     if (regions.size() - start != 2) {
         auto right_guard_merge = _transform_regions(regions, start + 1);
         right_first_bb = right_guard_merge.first;
         exiting_right_bb = right_guard_merge.second;
     }
     builder.SetInsertPoint(guard);
-    auto br = builder.CreateCondBr(cmp, regions[start][0], right_first_bb);
-    exiting_left_bb->getTerminator()->removeFromParent();
+    auto br = builder.CreateCondBr(cmp, left_first_bb, right_first_bb);
+    if (exiting_left_bb->getTerminator())
+        exiting_left_bb->getTerminator()->removeFromParent();
     if (exiting_right_bb->getTerminator())
         exiting_right_bb->getTerminator()->removeFromParent();
+    BasicBlock* merge_bb = BasicBlock::Create(llvm_ctx, "loop.transform.merge", main);
     builder.SetInsertPoint(exiting_left_bb);
     builder.CreateBr(merge_bb);
     builder.SetInsertPoint(exiting_right_bb);
@@ -99,11 +108,27 @@ loop_transformer::_transform_regions(std::vector<region_ty>& regions, int start)
 std::pair<BasicBlock*, BasicBlock*>
 loop_transformer::transform_loop_region(region_ty& region) {
     assert(is_loop_region(region));
-    BasicBlock* header = region[0];
+    BasicBlock* header = region.front();
     Loop* loop = LI.getLoopFor(header);
+    assert(loop->isInnermost());
     BasicBlock* latch = loop->getLoopLatch();
     assert(latch);
-
+    BasicBlock* exiting_bb = loop->getExitingBlock();
+    assert(exiting_bb);
+    BasicBlock* exit_bb = loop->getExitBlock();
+    assert(exit_bb);
+    Instruction* term = latch->getTerminator();
+    BranchInst* latch_branch = dyn_cast_or_null<BranchInst>(term);
+    assert(latch_branch);
+    assert(latch_branch->isUnconditional());
+    auto& llvm_ctx = main->getContext();
+    BasicBlock* merge_bb = BasicBlock::Create(llvm_ctx, "loop.loop_transform.merge", main);
+    Instruction* exiting_term = exiting_bb->getTerminator();
+    BranchInst* exiting_branch = dyn_cast_or_null<BranchInst>(exiting_term);
+    int exit_idx = exiting_branch->getSuccessor(0) == exit_bb ? 0 : 1;
+    exiting_branch->setSuccessor(exit_idx, merge_bb);
+    latch_branch->setSuccessor(0, merge_bb);
+    return {header, merge_bb};
 }
 
 region_ty loop_transformer::get_region(Loop* loop, BasicBlock* bb) {
