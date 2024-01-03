@@ -220,6 +220,9 @@ void rec_solver::rec2file() {
 
 std::string rec_solver::z3_infix(z3::expr e) {
     if (e.is_const() || e.is_numeral()) {
+        if (e.to_string().starts_with("nondet")) {
+            return "*";
+        }
         return e.to_string();
     }
     auto kind = e.decl().decl_kind();

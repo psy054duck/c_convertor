@@ -101,8 +101,10 @@ class c2z3 {
         z3::expr express_v_as_header_phis(Value* v);
         z3::expr _express_v_as_header_phis(Value* v, Loop* target_loop);
 
-        z3::expr express_v_as_header_phis(Value* v, path_ty& path);
-        z3::expr _express_v_as_header_phis(Value* v, path_ty& path);
+        // z3::expr express_v_as_header_phis(Value* v, path_ty& path);
+        z3::expr _express_v_as_header_phis(Value* v, path_ty& reversed_path);
+        z3::expr path_condition_as_header_phis(path_ty& path);
+        z3::expr _path_condition_as_header_phis(path_ty& path, int start);
 
         z3::func_decl get_z3_function(Value* v, int dim = 0);
         z3::func_decl get_z3_function(Use* u);

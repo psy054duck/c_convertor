@@ -572,7 +572,9 @@ rec_ty c2z3::loop2rec(Loop* loop) {
         // auto paths = get_paths_from_to_loop(loop);
         for (auto& phi : header->phis()) {
             rec_ty phi_rec = header_phi_as_rec_nested(&phi);
+            total_recs.insert(phi_rec.begin(), phi_rec.end());
         }
+        return total_recs;
     }
 }
 
@@ -580,21 +582,79 @@ rec_ty
 c2z3::header_phi_as_rec_nested(PHINode* phi) {
     LoopInfo& LI = LIs.at(main);
     Loop* loop = LI.getLoopFor(phi->getParent());
+    BasicBlock* latch = loop->getLoopLatch();
     std::vector<path_ty> paths = get_paths_from_to_loop(loop);
-}
+    Value* incoming_v = phi->getIncomingValueForBlock(latch);
+    // z3::expr cur_rec = z3::ite(path_cond)
 
-z3::expr c2z3::express_v_as_header_phis(Value* v, path_ty& path) {
-    if (auto CI = dyn_cast_or_null<ConstantInt>(v)) {
-        int svalue = CI->getSExtValue();
-        return is_bool(v) ? z3ctx.bool_val(svalue) : z3ctx.int_val(svalue);
+    std::vector<path_ty> valid_paths;
+    for (auto path : paths) {
+        // path_ty path_without_header(path.begin() + 1, path.end());
+        z3::expr path_cond = path_condition_as_header_phis(path);
+        z3::solver solver(z3ctx);
+        solver.add(path_cond);
+        auto res = solver.check();
+        if (res == z3::sat || res == z3::unknown)
+            valid_paths.push_back(path);
+        // path_ty reversed_path(path.rbegin(), path.rend());
+        // z3::expr cur_expr = _express_v_as_header_phis(incoming_v, reversed_path);
+        // path_ty path_without_header(path.begin() + 1, path.end());
+        // z3::expr path_cond = path_condition_as_header_phis(path_without_header);
+        // errs() << path_cond.simplify().to_string() << "\n";
+        // errs() << phi->getName() << " " << cur_expr.to_string() << "\n";
     }
-    auto inst = dyn_cast_or_null<Instruction>(v);
-    LoopInfo& LI = LIs.at(main);
-    Loop* loop = LI.getLoopFor(inst->getParent());
-    return _express_v_as_header_phis(v, loop);
+    assert(valid_paths.size() >= 2);
+    int sz = valid_paths.size();
+    path_ty path = valid_paths[sz - 1];
+    path_ty cur_path = valid_paths[sz - 2];
+    path_ty reversed_path(path.rbegin(), path.rend());
+    path_ty reversed_cur_path(cur_path.rbegin(), cur_path.rend());
+    z3::expr dummy = z3ctx.bool_const(("nondet" + std::to_string(sz - 2)).c_str());
+    z3::expr expr1 =_express_v_as_header_phis(incoming_v, reversed_path);
+    z3::expr expr2 =_express_v_as_header_phis(incoming_v, reversed_cur_path);
+    z3::expr expr = z3::ite(dummy, expr1, expr2);
+    // print_path(path);
+    // print_path(cur_path);
+    for (int i = sz - 3; i >= 0; i--) {
+        cur_path = valid_paths[i];
+        path_ty reversed_cur_path(cur_path.rbegin(), cur_path.rend());
+        dummy = z3ctx.bool_const(("nondet" + std::to_string(i)).c_str());
+        z3::expr cur_expr =_express_v_as_header_phis(incoming_v, reversed_cur_path);
+        expr = z3::ite(dummy, cur_expr, expr);
+    }
+    rec_ty res;
+    res.insert_or_assign(v2z3(phi), expr);
+    return res;
 }
 
-z3::expr c2z3::_express_v_as_header_phis(Value* v, path_ty& path) {
+z3::expr
+c2z3::path_condition_as_header_phis(path_ty& path) {
+    return _path_condition_as_header_phis(path, 1);
+}
+
+z3::expr
+c2z3::_path_condition_as_header_phis(path_ty& path, int start) {
+    if (path.size() - start == 1) {
+        return z3ctx.bool_val(true);
+    }
+    z3::expr post_cond = _path_condition_as_header_phis(path, start + 1);
+    BasicBlock* cur_bb = path[start];
+    BasicBlock* next_bb = path[start + 1];
+    Instruction* term = cur_bb->getTerminator();
+    BranchInst* branch = dyn_cast_or_null<BranchInst>(term);
+    z3::expr local_cond = z3ctx.bool_val(true);
+    if (branch->isConditional()) {
+        bool is_negated = branch->getSuccessor(0) == next_bb ? false : true;
+        path_ty reversed_path(path.begin(), path.begin() + start + 1);
+        std::reverse(reversed_path.begin(), reversed_path.end());
+        local_cond = _express_v_as_header_phis(branch->getOperand(0), reversed_path);
+        local_cond = is_negated ? !local_cond : local_cond;
+    }
+    z3::expr res_cond = local_cond && post_cond;
+    return res_cond;
+}
+
+z3::expr c2z3::_express_v_as_header_phis(Value* v, path_ty& reversed_path) {
     if (auto CI = dyn_cast_or_null<ConstantInt>(v)) {
         int svalue = CI->getSExtValue();
         return is_bool(v) ? z3ctx.bool_val(svalue) : z3ctx.int_val(svalue);
@@ -602,25 +662,32 @@ z3::expr c2z3::_express_v_as_header_phis(Value* v, path_ty& path) {
     auto inst = dyn_cast_or_null<Instruction>(v);
     LoopInfo& LI = LIs.at(main);
     BasicBlock* bb = inst->getParent();
-    Loop* loop = LI.getLoopFor(bb);
-    int dim = LI.getLoopDepth(bb);
-    if (loop != target_loop) {
+    // Loop* loop = LI.getLoopFor(bb);
+    // int dim = LI.getLoopDepth(bb);
+    // if (loop != target_loop) {
+    //     return v2z3(v);
+        // return v2z3(v, dim, false);
+    // }
+    if (bb == reversed_path.back() && isa<PHINode>(v)) {
         return v2z3(v);
         // return v2z3(v, dim, false);
     }
-    if (bb == loop->getHeader() && isa<PHINode>(v)) {
+
+    auto found_bb = std::find(reversed_path.begin(), reversed_path.end(), bb);
+    if (found_bb == reversed_path.end()) {
         return v2z3(v);
-        // return v2z3(v, dim, false);
     }
+    path_ty path(found_bb, reversed_path.end());
+    BasicBlock* prev_bb = *(found_bb + 1);
     z3::func_decl f = get_z3_function(v);
-    z3::expr_vector args = get_args(0, false, false, false);
+    z3::expr_vector args = get_args(0);
     z3::expr_vector res(z3ctx);
     int opcode = inst->getOpcode();
     if (inst->isBinaryOp()) {
         Value* op0 = inst->getOperand(0);
         Value* op1 = inst->getOperand(1);
-        z3::expr z3op0 = _express_v_as_header_phis(op0, target_loop);
-        z3::expr z3op1 = _express_v_as_header_phis(op1, target_loop);
+        z3::expr z3op0 = _express_v_as_header_phis(op0, path);
+        z3::expr z3op1 = _express_v_as_header_phis(op1, path);
         if (opcode == Instruction::Add) {
             return z3op0 + z3op1;
         } else if (opcode == Instruction::Sub) {
@@ -639,8 +706,8 @@ z3::expr c2z3::_express_v_as_header_phis(Value* v, path_ty& path) {
         auto pred = CI->getPredicate();
         Value* op0 = inst->getOperand(0);
         Value* op1 = inst->getOperand(1);
-        z3::expr z3op0 = _express_v_as_header_phis(op0, target_loop);
-        z3::expr z3op1 = _express_v_as_header_phis(op1, target_loop);
+        z3::expr z3op0 = _express_v_as_header_phis(op0, path);
+        z3::expr z3op1 = _express_v_as_header_phis(op1, path);
         if (pred == ICmpInst::ICMP_EQ) {
             return z3op0 == z3op1;
         } else if (pred == ICmpInst::ICMP_NE) {
@@ -657,31 +724,34 @@ z3::expr c2z3::_express_v_as_header_phis(Value* v, path_ty& path) {
             throw UnimplementedOperationException(opcode);
         }
     } else if (auto CI = dyn_cast_or_null<SelectInst>(inst)) {
-        z3::expr cond = _express_v_as_header_phis(CI->getOperand(0), target_loop);
-        z3::expr first = _express_v_as_header_phis(CI->getOperand(1), target_loop);
-        z3::expr second = _express_v_as_header_phis(CI->getOperand(2), target_loop);
+        z3::expr cond = _express_v_as_header_phis(CI->getOperand(0), path);
+        z3::expr first = _express_v_as_header_phis(CI->getOperand(1), path);
+        z3::expr second = _express_v_as_header_phis(CI->getOperand(2), path);
         return z3::ite(cond, first, second);
     } else if (auto CI = dyn_cast_or_null<CallInst>(inst)) {
         // all calls are treated as unknown values;
         return z3ctx.int_const("unknown");
-    } else if (auto CI = dyn_cast_or_null<PHINode>(inst)) {
-        z3::expr ite = phi2ite_header(CI);
-        if (ite) {
-            return ite;
-        } else {
-            throw UnimplementedOperationException(opcode);
-        }
+    } else if (auto phi = dyn_cast_or_null<PHINode>(inst)) {
+        // z3::expr ite = phi2ite_header(CI);
+        Value* incoming_v = phi->getIncomingValueForBlock(prev_bb);
+        path_ty new_path(found_bb + 1, reversed_path.end());
+        return _express_v_as_header_phis(incoming_v, new_path);
+        // if (ite) {
+        //     return ite;
+        // } else {
+        //     throw UnimplementedOperationException(opcode);
+        // }
     } else if (auto CI = dyn_cast_or_null<SExtInst>(inst)) {
-        return _express_v_as_header_phis(CI->getOperand(0), target_loop);
+        return _express_v_as_header_phis(CI->getOperand(0), path);
     } else if (auto CI = dyn_cast_or_null<ZExtInst>(inst)) {
-        return _express_v_as_header_phis(CI->getOperand(0), target_loop);
+        return _express_v_as_header_phis(CI->getOperand(0), path);
     } else if (auto CI = dyn_cast_or_null<LoadInst>(inst)) {
         z3::func_decl arr_f = get_array_function(inst);
         array_access_ty access = get_array_access_from_load_store(CI);
         z3::expr_vector indices(z3ctx);
         for (auto u : access.second) {
             Value* v = u->get();
-            indices.push_back(_express_v_as_header_phis(v, target_loop));
+            indices.push_back(_express_v_as_header_phis(v, path));
         }
         z3::expr_vector arr_n_args = merge_vec(indices, args);
         return arr_f(arr_n_args);
@@ -1708,7 +1778,8 @@ z3::expr_vector c2z3::path2z3(path_ty p) {
     // return new_axioms;
 }
 
-std::pair<closed_form_ty, rec_solver> c2z3::solve_loop(Loop* loop) {
+std::pair<closed_form_ty, rec_solver>
+c2z3::solve_loop(Loop* loop) {
     rec_ty recs = loop2rec(loop);
     z3::expr_vector res(z3ctx);
     initial_ty initials = loop2initial(loop);
