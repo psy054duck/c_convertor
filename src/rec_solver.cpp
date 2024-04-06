@@ -95,7 +95,7 @@ void rec_solver::set_eqs(rec_ty& eqs) {
 
 void rec_solver::solve() {
     rec2file();
-    std::string cmd = "python rec_solver.py tmp/recurrence.txt " + ind_var.to_string() + " > /dev/null";
+    std::string cmd = "python rec_solver.py tmp/recurrence.txt " + ind_var.to_string(); // + " > /dev/null";
     int err = system(cmd.c_str());
     // int err = system("python rec_solver.py tmp/test.txt");
     if (err) {

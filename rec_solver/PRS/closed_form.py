@@ -155,6 +155,7 @@ def vec_space_d(X, inits, transitions, d):
         basis_instances.append(numerator)
     if len(basis) != 0:
         ret.append((sp.Integer(1), basis_instances))
+    print(ret)
     return ret
 
 def solve_poly_rec(k, p, transitions, _n, inits):

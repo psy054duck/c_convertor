@@ -7,7 +7,7 @@ from .PRS.closed_form_class import ClosedForm
 
 def pretty_solve_and_print(filename):
     n = z3.Int('n')
-    res, variables, initial_symbols = solve_sym(filename)
+    res, variables, initial_symbols = solve_sym(filename, sp.Symbol('n'))
     var_mapping = {var: [] for var in variables}
     len_longest_closed_form = max(len(str(case[0])) if not isinstance(case[0], tuple) else max(len(str(case[0][0])), len(str(case[0][1]))) for case in res)
     template_closed_form = '%%-%ds' % (len_longest_closed_form + 1)
