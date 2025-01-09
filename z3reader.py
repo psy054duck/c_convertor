@@ -46,11 +46,11 @@ def main(filename, timeout):
         print(res)
 
     if res == z3.sat:
-        exit(-1)
-    elif res == z3.unsat:
         exit(0)
-    else:
+    elif res == z3.unsat:
         exit(1)
+    else:
+        exit(2)
 
 
 if __name__ == '__main__':
