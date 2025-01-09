@@ -1,6 +1,6 @@
 from operator import index
 # from utils import closed_form2mod
-from numpy import SHIFT_INVALID, matrix
+from numpy import matrix
 import sympy as sp
 import z3
 import functools

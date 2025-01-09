@@ -1,0 +1,3 @@
+[submodule "rec_solver"]
+	path = rec_solver
+	url = https://github.com/psy054duck/rec_solver.git

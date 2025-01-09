@@ -1,6 +1,7 @@
 #include "rec_solver.h"
 #include <iostream>
 #include <numeric>
+#include "boost/algorithm/string/join.hpp"
 
 static void combine_vec(z3::expr_vector& vec1, const z3::expr_vector& vec2) {
     for (z3::expr e : vec2) {
@@ -32,6 +33,13 @@ bool is_simple_rec(z3::func_decl func_decl, z3::expr rhs) {
 
 void rec_solver::set_ind_var(z3::expr var) {
     ind_var = var;
+}
+
+rec_solver
+rec_solver::operator=(const rec_solver& other) {
+    ind_var = other.ind_var;
+    initial_values_k = other.initial_values_k;
+    initial_values_v = other.initial_values_v;
 }
 
 z3::expr_vector find_all_app_of_decl(z3::func_decl func, z3::expr e, z3::context& z3ctx) {
@@ -87,6 +95,12 @@ rec_solver::rec_solver(rec_ty& eqs, z3::expr var, z3::context& z3ctx): z3ctx(z3c
     set_ind_var(var);
 }
 
+void
+rec_solver::set_eqs(std::vector<z3::expr>& _conds, std::vector<rec_ty>& _exprs) {
+    conds = _conds;
+    exprs = _exprs;
+}
+
 void rec_solver::set_eqs(rec_ty& eqs) {
     for (auto r : eqs) {
         rec_eqs.insert_or_assign(r.first, hoist_ite(r.second));
@@ -95,7 +109,7 @@ void rec_solver::set_eqs(rec_ty& eqs) {
 
 void rec_solver::solve() {
     rec2file();
-    std::string cmd = "python rec_solver.py tmp/recurrence.txt " + ind_var.to_string(); // + " > /dev/null";
+    std::string cmd = "python solver.py tmp/recurrence.txt " + ind_var.to_string(); // + " > /dev/null";
     int err = system(cmd.c_str());
     // int err = system("python rec_solver.py tmp/test.txt");
     if (err) {
@@ -276,7 +290,13 @@ std::string rec_solver::z3_infix(z3::expr e) {
     } else if (kind == Z3_OP_NOT) {
         assert(args.size() == 1);
         return "!" + args_infix[0];
+    } else if (kind == Z3_OP_UNINTERPRETED) {
+        std::string f = e.decl().name().str();
+        std::string args_str = boost::join(args_infix, ", ");
+        std::string s = f + "(" + args_str + ")";
+        return s;
     } else {
+        std::cout << e.to_string() << "\n";
         std::cout << kind << "\n";
         abort();
         // return e.to_string();
@@ -286,7 +306,9 @@ std::string rec_solver::z3_infix(z3::expr e) {
 }
 
 void rec_solver::_rec2file(std::ofstream& out) {
-    _format();
+    if (!is_formatted()) {
+        _format();
+    }
     // z3::expr_vector src(z3ctx);
     // z3::expr_vector dst(z3ctx);
     int name_idx = 0;

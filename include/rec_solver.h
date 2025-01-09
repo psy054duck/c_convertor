@@ -26,10 +26,12 @@ class rec_solver {
         z3::expr_vector initial_values_v;
         std::vector<z3::expr> conds;
         std::vector<rec_ty> exprs;
+        bool is_formatted() { return exprs.size() > 0; }
     public:
         rec_solver(rec_ty& rec_eqs, z3::expr var, z3::context& z3ctx);
         rec_solver(z3::context& z3ctx): z3ctx(z3ctx), ind_var(z3ctx.int_const("n0")), initial_values_k(z3ctx), initial_values_v(z3ctx) {}
         void set_eqs(rec_ty& rec_eqs);
+        void set_eqs(std::vector<z3::expr>& _conds, std::vector<rec_ty>& _exprs);
         void add_initial_values(z3::expr_vector k, z3::expr_vector v);
         void set_ind_var(z3::expr var);
         void simple_solve();
@@ -52,5 +54,6 @@ class rec_solver {
         // std::pair<std::vector<z3::expr>, std::vector<z3::expr>> rec_solver::parse_expr_(z3::expr e);
         z3::expr hoist_ite(z3::expr e);
         z3::expr get_ind_var() const { return ind_var; }
+        rec_solver operator=(const rec_solver& other);
 };
 #endif

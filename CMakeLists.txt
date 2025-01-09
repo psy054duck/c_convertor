@@ -4,9 +4,10 @@ project(C2Z3)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}")
 add_subdirectory(src)
 set (CMAKE_CXX_STANDARD 20)
-# 
+#
 find_package(LLVM REQUIRED CONFIG)
 find_package(Z3 REQUIRED CONFIG HINTS /opt/homebrew/Cellar/z3)
+find_package(Boost REQUIRED)
 # 
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
@@ -19,6 +20,7 @@ message(STATUS "Using z3++.h in: ${Z3_CXX_INCLUDE_DIRS}")
 # # you will need to enable C++11 support
 # # for your compiler.
 # 
+include_directories(${Boost_INCLUDE_DIRS})
 include_directories(${LLVM_INCLUDE_DIRS})
 include_directories(${Z3_CXX_INCLUDE_DIRS})
 include_directories("${CMAKE_SOURCE_DIR}/include")

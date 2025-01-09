@@ -50,6 +50,7 @@
 #include "rec_solver.h"
 #include "smt_solver.h"
 #include "loop_transformer.h"
+#include "function_summary.h"
 
 using namespace llvm;
 typedef std::vector<Use*> use_vector;
@@ -72,6 +73,8 @@ void combine_vec(z3::expr_vector& v1, z3::expr_vector& v2);
 class c2z3 {
     public:
         c2z3(std::unique_ptr<Module> &mod);
+        c2z3(Function* F);
+        // c2z3(const c2z3& other) = default;
         use_vector getAllAssertions();
         validation_type check_assert_backward(Use* a, int out_idx);
         validation_type check_assert(Use* a, int out_idx);
@@ -98,8 +101,8 @@ class c2z3 {
         pc_type pc_and(const pc_type& a, const pc_type& b);
         pc_type pc_or(const pc_type& a, const pc_type& b);
 
-        z3::expr express_v_as_header_phis(Value* v);
-        z3::expr _express_v_as_header_phis(Value* v, Loop* target_loop);
+        z3::expr express_v_as_header_phis(Value* v, int dim=0);
+        z3::expr _express_v_as_header_phis(Value* v, Loop* target_loop, int dim=0);
 
         // z3::expr express_v_as_header_phis(Value* v, path_ty& path);
         z3::expr _express_v_as_header_phis(Value* v, path_ty& reversed_path);
@@ -141,7 +144,7 @@ class c2z3 {
         bool is_bool(Value* v);
         bool is_header_phi(Value* v, Loop* loop);
 
-        rec_ty header_phi_as_rec(PHINode* phi);
+        rec_ty header_phi_as_rec(PHINode* phi, int dim);
         rec_ty header_phi_as_rec_nested(PHINode* phi);
         initial_ty header_phi_as_initial(PHINode* phi);
         rec_ty loop2rec(Loop* loop);
@@ -149,10 +152,10 @@ class c2z3 {
         z3::expr loop_bound(Loop* loop, rec_solver& rec_s);
         std::pair<closed_form_ty, rec_solver> solve_loop(Loop* loop);
         
-        z3::expr phi2ite_header(PHINode* phi);
+        z3::expr phi2ite_header(PHINode* phi, int dim);
         std::pair<z3::expr, z3::expr> _phi2ite_header(PHINode* phi, BasicBlock* merge_bb);
-        z3::expr phi2ite_find_path_condition(BasicBlock* from, BasicBlock* to);
-        z3::expr phi2ite_find_path_condition_one_step(BasicBlock* from, BasicBlock* to);
+        z3::expr phi2ite_find_path_condition(BasicBlock* from, BasicBlock* to, int dim);
+        z3::expr phi2ite_find_path_condition_one_step(BasicBlock* from, BasicBlock* to, int dim);
 
         bool is_back_edge(BasicBlock* from, BasicBlock* to);
         bool is_back_edge_loop(Loop* loop, BasicBlock* from, BasicBlock* to);
@@ -204,6 +207,10 @@ class c2z3 {
         int get_successor_index(BranchInst* br, const BasicBlock* bb);
         void clear_all_info();
         Value* find_def_chain_in_block(Value* v, BasicBlock* bb);
+
+        void summarize_function(Function* F);
+
+        c2z3 operator=(const c2z3& other);
     private:
         std::unique_ptr<Module> m;
         Function* main;
@@ -212,6 +219,7 @@ class c2z3 {
         std::map<Function*, DominatorTree> DTs;
         std::map<Function*, PostDominatorTree> PDTs;
         std::map<Function*, MemorySSA&> MSSAs;
+
         bool verbose = false;
         z3::context z3ctx;
         PassBuilder PB;
@@ -232,6 +240,7 @@ class c2z3 {
         std::map<Value*, int> array_index;
         std::map<Value*, z3::func_decl> array_z3_func;
         std::map<Value*, BasicBlock*> array_def_block;
+        std::map<Function*, function_summary> function_summaries;
         Value* _find_def_chain_in_block(Value* v, BasicBlock* bb, std::set<Value*>& visited_v);
         BasicBlock* find_nearest_common_dominator_phi(DominatorTree& DT, PHINode* phi);
 };
