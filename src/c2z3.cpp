@@ -855,7 +855,9 @@ z3::expr_vector c2z3::inst2z3(Instruction* inst, BasicBlock* prev_bb=nullptr) {
     } else if (auto CI = dyn_cast_or_null<CallInst>(inst)) {
         // all calls are treated as unknown values;
         Function* called = CI->getCalledFunction();
+        errs() << inst->getName() << "\n";
         auto called_name = called->getName();
+        errs() << inst->getName() << "\n";
         if (called_name.ends_with("uint")) {
             res.push_back(f(args) >= 0);
         } else if (called_name == "assume_abort_if_not") {
@@ -1510,7 +1512,7 @@ validation_type c2z3::check_assert(Use* a, int out_idx) {
     validation_type res = correct;
     std::set<std::string> exempt_functions = {"abort", "__assert_fail", "reach_error", "__VERIFIER_nondet_int", "assume_abort_if_not", "__VERIFIER_assert", "main"};
     for (Function& F : *m) {
-        if (!exempt_functions.contains(F.getName().str())) {
+        if (!exempt_functions.contains(F.getName().str()) && F.hasExactDefinition()) {
             summarize_function(&F);
         }
     }

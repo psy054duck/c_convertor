@@ -90,7 +90,12 @@ bool is_one_stride_simple_rec(z3::expr lhs, z3::expr rhs) {
     z3::expr lhs_arg = lhs.arg(0);
 }
 
-rec_solver::rec_solver(rec_ty& eqs, z3::expr var, z3::context& z3ctx): z3ctx(z3ctx), ind_var(z3ctx), initial_values_k(z3ctx), initial_values_v(z3ctx) {
+void
+rec_solver::add_assumption(z3::expr e) {
+    assumption  = assumption && e;
+}
+
+rec_solver::rec_solver(rec_ty& eqs, z3::expr var, z3::context& z3ctx): z3ctx(z3ctx), ind_var(z3ctx), initial_values_k(z3ctx), initial_values_v(z3ctx), assumption(z3ctx.bool_val(true)) {
     set_eqs(eqs);
     set_ind_var(var);
 }
