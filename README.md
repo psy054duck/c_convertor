@@ -49,6 +49,6 @@ there are three types of responses:
   - `unknown` means that the tool is not able to tell whether the assertion is correct or not.
 
 ## Related Publications
-On Polynomial Expressions with C-Finite Recurrences in Loops with Nested Nondeterministic Branches (To appear in CAV 2024)
+On Polynomial Expressions with C-Finite Recurrences in Loops with Nested Nondeterministic Branches (CAV 2024)
 
 Solving Conditional Linear Recurrences for Program Verification: The Periodic Case (OOPSLA 2023)
