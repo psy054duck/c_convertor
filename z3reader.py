@@ -46,6 +46,7 @@ def main(filename, timeout):
         print(res)
 
     if res == z3.sat:
+        print(basic_solver.model())
         exit(0)
     elif res == z3.unsat:
         exit(1)

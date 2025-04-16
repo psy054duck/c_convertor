@@ -39,6 +39,8 @@
 #include "llvm/Passes/PassBuilder.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
 
+#include "llvm/Support/raw_os_ostream.h"
+
 #include "z3++.h"
 
 #include <string>
@@ -145,6 +147,7 @@ class c2z3 {
         bool is_header_phi(Value* v, Loop* loop);
 
         rec_ty header_phi_as_rec(PHINode* phi, int dim);
+        rec_ty memory_header_phi_as_rec(MemoryPhi* phi, int dim);
         rec_ty header_phi_as_rec_nested(PHINode* phi);
         initial_ty header_phi_as_initial(PHINode* phi);
         rec_ty loop2rec(Loop* loop);

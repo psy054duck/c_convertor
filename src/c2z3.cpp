@@ -174,8 +174,8 @@ void c2z3::analyze_module_pre(ModulePassManager& MPM) {
     PB.registerLoopAnalyses(LAM);
     PB.crossRegisterProxies(LAM, FAM, CGAM, MAM);
 
-    // std::error_code ec;
-    // raw_fd_ostream output_fd("tmp/tmp.ll", ec);
+    std::error_code ec;
+    raw_fd_ostream output_fd("tmp/MemorySSA.ll", ec);
 
     MPM.addPass(ModuleInlinerPass());
     MPM.addPass(createModuleToFunctionPassAdaptor(PromotePass()));
@@ -193,7 +193,7 @@ void c2z3::analyze_module_pre(ModulePassManager& MPM) {
     MPM.addPass(createModuleToFunctionPassAdaptor(InstructionNamerPass()));
     MPM.addPass(createModuleToFunctionPassAdaptor(AggressiveInstCombinePass()));
     // MPM.addPass(createModuleToFunctionPassAdaptor(RegToMemPass()));
-    // MPM.addPass(createModuleToFunctionPassAdaptor(MemorySSAPrinterPass(output_fd)));
+    // MPM.addPass(createModuleToFunctionPassAdaptor(MemorySSAPrinterPass(output_fd, true)));
     // MPM.addPass(createModuleToFunctionPassAdaptor(MemorySSAWrapperPass()));
 
     MPM.run(*m, MAM);
@@ -279,6 +279,11 @@ rec_ty c2z3::header_phi_as_rec(PHINode* phi, int dim) {
     rec_ty res;
     res.insert_or_assign(rec_def, rec_z3);
     return res;
+}
+
+rec_ty c2z3::memory_header_phi_as_rec(MemoryPhi* phi, int dim) {
+    LoopInfo& LI = LIs.at(main);
+    Loop* loop = LI.getLoopFor(phi->getBlock());
 }
 
 initial_ty c2z3::header_phi_as_initial(PHINode* phi) {
@@ -556,6 +561,9 @@ rec_ty c2z3::loop2rec(Loop* loop) {
     BasicBlock* header = loop->getHeader();
     rec_ty total_recs;
     if (loop->isInnermost()) {
+        MemorySSA& mssa = MSSAs.at(main);
+        MemoryPhi* m_phi = mssa.getMemoryAccess(header);
+        // memory_header_phi_as_rec(m_phi, 1);
         for (auto& phi : header->phis()) {
             rec_ty phi_rec = header_phi_as_rec(&phi, 1);
             total_recs.insert(phi_rec.begin(), phi_rec.end());
@@ -855,9 +863,7 @@ z3::expr_vector c2z3::inst2z3(Instruction* inst, BasicBlock* prev_bb=nullptr) {
     } else if (auto CI = dyn_cast_or_null<CallInst>(inst)) {
         // all calls are treated as unknown values;
         Function* called = CI->getCalledFunction();
-        errs() << inst->getName() << "\n";
         auto called_name = called->getName();
-        errs() << inst->getName() << "\n";
         if (called_name.ends_with("uint")) {
             res.push_back(f(args) >= 0);
         } else if (called_name == "assume_abort_if_not") {
@@ -1921,13 +1927,21 @@ array_access_ty c2z3::get_array_access_from_load_store(Value* v) {
 
 array_access_ty c2z3::get_array_access_from_gep(GetElementPtrInst* gep) {
     Value* arr_ptr = gep->getPointerOperand();
-    assert(isa<AllocaInst>(arr_ptr));
     std::vector<Use*> access_args;
-    for (auto idx = gep->idx_begin() + 1; idx != gep->idx_end(); idx++) {
-        // Value* idx_v = idx->get();
-        access_args.push_back(idx);
+    for (auto i = gep->idx_begin() + 1; i != gep->idx_end(); i++) {
+        access_args.push_back(i);
     }
     return {arr_ptr, access_args};
+    // if (isa<AllocaInst>(arr_ptr)) {
+    //     std::vector<Use*> access_args;
+    //     for (auto idx = gep->idx_begin() + 1; idx != gep->idx_end(); idx++) {
+    //         // Value* idx_v = idx->get();
+    //         access_args.push_back(idx);
+    //     }
+    //     return {arr_ptr, access_args};
+    // } else if (auto GV = dyn_cast<GlobalVariable>(arr_ptr)) {
+    //     auto arr_ty = dyn_cast<ArrayType>(GV->getValueType());
+    // }
 }
 
 z3::expr_vector c2z3::get_args(int dim, bool c, bool plus, bool prefix, Loop* loop) {
